@@ -24,6 +24,25 @@ class MAML_trainer():
         return a model copy with updated parameters
         '''
 
+        # Forward pass using support sets
+        logits = self.classifier(x_support)
+        loss = F.cross_entropy(logits, y_support)
+
+        # Copy classifier to store updated params-> we don't want to update the actual meta-model
+        copy_classifier = copy.deepcopy(self.classifier)
+        copy_classifier_params = copy_classifier.named_parameters()
+
+        # Manual backward pass
+        grads = autograd.grad(loss, self.classifier.named_parameters().values())
+        for (name, param), grad in zip(self.classifier.named_parameters(), grads):
+            if grad is None:
+                new_param = param
+            else:
+                new_param = param - alpha * grad # gradient descent
+            copy_classifier_params[name] = new_param
+
+        return copy_classifier
+
     def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
         '''
         Perform single outer loop forward and backward pass of MAML algorithm
