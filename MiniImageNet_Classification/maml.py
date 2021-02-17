@@ -33,8 +33,8 @@ class MAML_trainer():
         copy_classifier_params = copy_classifier.named_parameters()
 
         # Manual backward pass
-        grads = autograd.grad(loss, self.classifier.named_parameters().values())
-        for (name, param), grad in zip(self.classifier.named_parameters(), grads):
+        for name, param in self.classifier.named_parameters():
+            grad = param.grad.data
             if grad is None:
                 new_param = param
             else:
