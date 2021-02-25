@@ -3,7 +3,7 @@ Different classifier architectures for image classification
 '''
 
 import torch
-import torch.nn. as nn
+import torch.nn as nn
 from torchvision import models
 
 class ResnetClassifier(nn.Module):
