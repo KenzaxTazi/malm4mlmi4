@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from classifiers import *
 import torch.nn as nn
+import copy
 
 class MAML_trainer():
     def __init__(self, classifier, optimizer):
