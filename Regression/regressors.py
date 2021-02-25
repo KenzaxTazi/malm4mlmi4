@@ -5,7 +5,6 @@ Different regressors
 import torch 
 import torch.nn as nn 
 
-
 __all__ = ['MLP']
 
 class MLP(nn.Module):

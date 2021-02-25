@@ -3,9 +3,10 @@ import abc
 import numpy as np
 import torch
 
-#from .utils import device
+from utils import *
+
 #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = 'cpu'
+#device = 'cpu'
 
 __all__ = ['SinusoidGenerator']
 
@@ -66,15 +67,19 @@ class DataGenerator(metaclass=abc.ABCMeta):
                  x_range = (-5, 5),
                  A_range = (0.1, 5),
                  P_range = (0, np.pi),
-                 max_train_points=50,
-                 max_test_points=50):
+                 min_train_points=10,
+                 max_train_points=10,
+                 min_test_poitns=10,
+                 max_test_points=10):
         self.batch_size = batch_size
         self.num_tasks = num_tasks
         self.x_range = x_range
         self.A_range = A_range
         self.P_range = P_range
-        self.max_train_points = max(max_train_points, 3)
-        self.max_test_points = max(max_test_points, 3)
+        self.max_train_points = max_train_points
+        self.max_test_points = max_test_points
+        self.min_train_points = min_train_points
+        self.min_test_poitns = min_test_poitns
 
     @abc.abstractmethod
     def sample(self, x):
@@ -102,8 +107,8 @@ class DataGenerator(metaclass=abc.ABCMeta):
                 'y_target': []}
         
         #Determine number of test and train points
-        num_train_points = np.random.randint(3, self.max_train_points + 1)
-        num_test_points = np.random.randint(3, self.max_test_points + 1)
+        num_train_points = np.random.randint(self.min_train_points, self.max_train_points + 1)
+        num_test_points = np.random.randint(self.min_test_poitns, self.max_test_points + 1)
         num_points = num_train_points + num_test_points
         
         for i in range(self.batch_size):
