@@ -16,7 +16,6 @@ def set_attr(obj, names, val):
         set_attr(getattr(obj, names[0]), names[1:], val)
 
 class MAML_trainer():
-    # TODO: NEED TO CHANGE STRUCTURE OF FORWARD FUNCTIONS TO ACCEPT UPDATED PARAMS AS TENSORS
     def __init__(self, classifier, optimizer):
         self.classifier = classifier
         self.optimizer = optimizer
@@ -34,7 +33,7 @@ class MAML_trainer():
 
         alpha = inner loop learning rate
 
-        return a model copy with updated parameters
+        returns the updated parameters
         '''
 
         # Forward pass using support sets
@@ -44,12 +43,7 @@ class MAML_trainer():
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
-            # Copy classifier to store updated params-> we don't want to update the actual meta-model
-            copy_classifier = copy.deepcopy(self.classifier)
-            #copy_classifier_params = copy_classifier.state_dict()
-            copy_classifier_params = copy_classifier.named_parameters()
-            #meta_params = self.classifier.state_dict()
-            #grads = {k:v.grad for k, v in zip(meta_params, self.classifier.parameters())}
+            updated_params = self.classifier.state_dict()
 
             # Manual update
             for  (name, param) in self.classifier.named_parameters():
@@ -58,16 +52,9 @@ class MAML_trainer():
                     new_param = param
                 else:
                     new_param = param - alpha * grad # gradient descent
+                updated_params[name] = new_param
 
-                del_attr(copy_classifier, name.split('.'))
-                set_attr(copy_classifier, name.split('.'), new_param)
-                #setattr(copy_classifier, name, new_param)
-            #copy_classifier.load_state_dict(copy_classifier_params)
-            #print(copy_classifier_params['network.fc.weight'])
-
-        params = copy_classifier.state_dict()
-
-        return copy_classifier
+        return updated_params
 
     def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
         '''
@@ -94,10 +81,10 @@ class MAML_trainer():
 
         # Perform inner loop training per task using support sets
         for task in range(x_supports.size(0)):
-            updated_classifer = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
+            updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
 
-            # Collect logit predictions for query sets, using model updated params for specific task
-            logits = updated_classifer(x_queries[task])
+            # Collect logit predictions for query sets, using updated params for specific task
+            logits = self.classifer(x_queries[task], updated_params)
 
             # Update task losses
             curr_loss = F.cross_entropy(logits, y_queries[task])
