@@ -6,4 +6,4 @@ Use the MAML algorithm to meta-train a classifier, using the Mini ImageNet datas
 
 ### python3.6 or above
 ### pytorch > 1.0
-Quick install: pip insall torch, torchvision
+Quick install: pip insall torch, torchvision, torchmeta
