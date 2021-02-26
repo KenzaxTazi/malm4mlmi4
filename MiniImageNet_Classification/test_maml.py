@@ -4,10 +4,10 @@ Aim is to see if the parameters are updating
 
 import torch
 from maml import MAML_trainer
-from classifiers import ResnetClassifier
+from classifiers import MetaMiniImageNetClassifier
 
 num_classes = 2
-meta_classifier = ResnetClassifier(num_classes=num_classes)
+meta_classifier = MetaMiniImageNetClassifier(out_features=num_classes)
 meta_classifier.train()
 
 lr = 10
@@ -31,10 +31,10 @@ y_queries = (torch.rand(size=(T, K*N)) < 0.5).long()
 # perform a single outer loop train
 
 params = meta_classifier.state_dict()
-final_layer_before = params['network.fc.weight']
+final_layer_before = params['classifier.weight']
 loss = my_trainer.outer_loop_train(x_supports, y_supports, x_queries, y_queries)
 params = meta_classifier.state_dict()
-final_layer_after = params['network.fc.weight']
+final_layer_after = params['classifier.weight']
 
 print(final_layer_before)
 print("------------------")

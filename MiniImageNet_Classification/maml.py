@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from classifiers import *
 import torch.nn as nn
-import copy
+from collections import OrderedDict
 
 def del_attr(obj, names):
     if len(names) == 1:
@@ -38,7 +38,7 @@ class MAML_trainer():
 
         # Forward pass using support sets
         with torch.enable_grad():
-            logits = self.classifier(x_support)
+            logits = self.classifier(x_support, OrderedDict(self.classifier.named_parameters()))
             loss = F.cross_entropy(logits, y_support)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
