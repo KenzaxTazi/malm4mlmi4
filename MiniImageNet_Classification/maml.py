@@ -54,6 +54,7 @@ class MAML_trainer():
                     new_param = param - alpha * grad # gradient descent
                 updated_params[name] = new_param
 
+        #print(updated_params['classifier.weight'])
         return updated_params
 
     def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
@@ -84,16 +85,16 @@ class MAML_trainer():
             updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
 
             # Collect logit predictions for query sets, using updated params for specific task
-            logits = self.classifer(x_queries[task], updated_params)
+            logits = self.classifier(x_queries[task], updated_params)
 
             # Update task losses
             curr_loss = F.cross_entropy(logits, y_queries[task])
             total_loss = total_loss + curr_loss
 
-
         # Backward pass to update meta-model parameters
         self.optimizer.zero_grad()
         total_loss.backward()
+
         for param in self.optimizer.param_groups[0]['params']:
             # Bit of regularisation innit
             nn.utils.clip_grad_value_(param, 10)
