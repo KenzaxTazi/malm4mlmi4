@@ -4,7 +4,19 @@ from classifiers import *
 import torch.nn as nn
 import copy
 
+def del_attr(obj, names):
+    if len(names) == 1:
+        delattr(obj, names[0])
+    else:
+        del_attr(getattr(obj, names[0]), names[1:])
+def set_attr(obj, names, val):
+    if len(names) == 1:
+        setattr(obj, names[0], val)
+    else:
+        set_attr(getattr(obj, names[0]), names[1:], val)
+
 class MAML_trainer():
+    # TODO: NEED TO CHANGE STRUCTURE OF FORWARD FUNCTIONS TO ACCEPT UPDATED PARAMS AS TENSORS
     def __init__(self, classifier, optimizer):
         self.classifier = classifier
         self.optimizer = optimizer
@@ -26,21 +38,34 @@ class MAML_trainer():
         '''
 
         # Forward pass using support sets
-        logits = self.classifier(x_support)
-        loss = F.cross_entropy(logits, y_support)
+        with torch.enable_grad():
+            logits = self.classifier(x_support)
+            loss = F.cross_entropy(logits, y_support)
+            self.optimizer.zero_grad()
+            loss.backward(retain_graph=True)
 
-        # Copy classifier to store updated params-> we don't want to update the actual meta-model
-        copy_classifier = copy.deepcopy(self.classifier)
-        copy_classifier_params = copy_classifier.named_parameters()
+            # Copy classifier to store updated params-> we don't want to update the actual meta-model
+            copy_classifier = copy.deepcopy(self.classifier)
+            #copy_classifier_params = copy_classifier.state_dict()
+            copy_classifier_params = copy_classifier.named_parameters()
+            #meta_params = self.classifier.state_dict()
+            #grads = {k:v.grad for k, v in zip(meta_params, self.classifier.parameters())}
 
-        # Manual backward pass
-        for name, param in self.classifier.named_parameters():
-            grad = param.grad.data
-            if grad is None:
-                new_param = param
-            else:
-                new_param = param - alpha * grad # gradient descent
-            copy_classifier_params[name] = new_param
+            # Manual update
+            for  (name, param) in self.classifier.named_parameters():
+                grad = param.grad
+                if grad is None:
+                    new_param = param
+                else:
+                    new_param = param - alpha * grad # gradient descent
+
+                del_attr(copy_classifier, name.split('.'))
+                set_attr(copy_classifier, name.split('.'), new_param)
+                #setattr(copy_classifier, name, new_param)
+            #copy_classifier.load_state_dict(copy_classifier_params)
+            #print(copy_classifier_params['network.fc.weight'])
+
+        params = copy_classifier.state_dict()
 
         return copy_classifier
 
@@ -65,7 +90,7 @@ class MAML_trainer():
         W: Image Width
         '''
 
-        task_losses = []
+        total_loss = torch.zeros(1)
 
         # Perform inner loop training per task using support sets
         for task in range(x_supports.size(0)):
@@ -76,10 +101,10 @@ class MAML_trainer():
 
             # Update task losses
             curr_loss = F.cross_entropy(logits, y_queries[task])
-            task_losses.append(curr_loss)
+            total_loss = total_loss + curr_loss
+
 
         # Backward pass to update meta-model parameters
-        total_loss = torch.cat(task_losses).sum()
         self.optimizer.zero_grad()
         total_loss.backward()
         for param in self.optimizer.param_groups[0]['params']:
