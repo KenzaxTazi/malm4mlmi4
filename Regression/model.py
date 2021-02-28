@@ -3,7 +3,9 @@ import torch.nn as nn
 from collections import OrderedDict
 from torchmeta.modules import (MetaModule, MetaLinear, MetaSequential)
 
-__all__ = ['MetaMLPModel','MetaMLPSinusoid']
+Sinusoid
+
+__all__ = ['MetaMLPModel','ModelMLPSinusoid']
 
 class MetaMLPModel(MetaModule):
     """Multi-layer perceptron architecture.

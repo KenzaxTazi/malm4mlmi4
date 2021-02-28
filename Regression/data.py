@@ -30,7 +30,7 @@ class LambdaIterator:
     Args: 
         generators (function): Function that generates an element
         num_elements (int): Number of elements to generate
-    """ 
+    """   
 
     def __init__(self, generator, num_elements):
         self.generator = generator
