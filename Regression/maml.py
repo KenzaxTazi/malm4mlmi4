@@ -1,127 +1,111 @@
 import torch
 import torch.nn.functional as F
-from regressors import *
+from model import *
 import torch.nn as nn
-import copy
-
-torch.autograd.set_detect_anomaly(True)
+from collections import OrderedDict
+from utils import *
 
 class MAML_trainer():
     def __init__(self, regressor, optimizer):
         self.regressor = regressor
-        #self.optimizer = optimizer
-        self.optimizer = torch.optim.Adam(self.regressor.parameters(), lr=.01)
-        self.counter = 1
-
+        self.optimizer = optimizer
+        
     def _inner_loop_train(self, x_support, y_support, alpha):
         '''
-        [TO DO: UPDATE]
+        Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
-        alpha = inner loop learning rate
+        x_support : tensor [K, 1]
+            Support set inputs, where K is the number of sampled input-output pairs from task.  
 
-        return a model copy with updated parameters
-        '''
-
-        # Copy regressor to store updated params-> we don't want to update the actual meta-model
-        copy_regressor = copy.deepcopy(self.regressor)
-        #copy_regressor_params = copy_regressor.named_parameters()
+        y_support : tensor [K, 1]
+            Support set outputs, where K is the number of sampled input-output pairs from task. 
         
-        with torch.enable_grad():
+        alpha : float
+            Inner loop learning rate
+
+
+        Return updated model parameters. 
+        '''
+
         # Forward pass using support sets
-            predictions = copy_regressor(x_support)
-            loss = F.mse_loss(predictions, y_support)
-            loss.backward()
+        with torch.enable_grad():
+            predicted = self.regressor(x_support, OrderedDict(self.regressor.named_parameters()))
+            loss = F.mse_loss(predicted, y_support)
+            self.optimizer.zero_grad()
+            loss.backward(retain_graph=True)
 
-        state_dict = copy_regressor.state_dict()
+            updated_params = self.regressor.state_dict()
 
-        # Manual backward pass
-        for name, param in copy_regressor.named_parameters():
-            #grad = param.grad.data
-            grad = param.grad
-            if grad is None:
-                new_param = param
-            else:
-                new_param = param - alpha * grad.data # gradient descent
-            
-            state_dict[name] = new_param
-            #copy_regressor_params[name] = new_param
-            #with torch.no_grad():
-            #    param.copy_(new_param)
+            # Manual update
+            for (name, param) in self.regressor.named_parameters():
+                grad = param.grad
+                if grad is None:
+                    new_param = param
+                else:
+                    new_param = param - alpha * grad
+                updated_params[name] = new_param
+        
+        return updated_params
 
-        copy_regressor.load_state_dict(state_dict)
-
-        return copy_regressor ## CHECK IF copy_regressor HAS BEEN UPDATED 
-
-    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
+    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
         '''
+        Perform single outer loop forward and backward pass of Model-Agnostic Meta Learning Algorithm (MAML).
 
-        [TO DO: UPDATE]
+        x_supports : tensor [B, K, 1]
+            Support sets inputs.  
 
+        y_supports : tensor [B, K, 1]
+            Support sets outputs. 
 
-        Perform single outer loop forward and backward pass of MAML algorithm
+        x_queries : tensor [B, K, 1]
+            Query sets inputs.  
 
-        Structure:
-        Support sets used for inner loop training
-        Query sets used for outer loop training
+        y_queries : tensor [B, K, 1]
+            Query sets outputs. 
+
+            where:
+                B : int : number of tasks per batch (i.e., batch size)
+                K : int : number of sampled input-output pairs from task
+
+        alpha : float
+            Inner loop training rate. 
+        
+        Return:
+            total_loss : tensor [1]
+                batch loss with updated MAML model parmaters. 
+            prior_total_loss : tensor [1]
+                batch loss with prior MAML model parameters.   
 
         '''
-
-        task_losses = []
+        total_prior_loss = torch.zeros(1).to(device)
+        total_loss = torch.zeros(1).to(device)
 
         # Perform inner loop training per task using support sets
         for task in range(x_supports.size(0)):
-            updated_regressor = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
+            updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
+            
+            # Collect predictions for query sets, using model prior params for specific task
+            prior_predictions = self.regressor(x_queries[task], OrderedDict(self.regressor.named_parameters()))
+
+            # Calculate prior loss and add to task prior losses
+            curr_prior_loss = F.mse_loss(prior_predictions, y_queries[task])
+            total_prior_loss = total_prior_loss + curr_prior_loss
 
             # Collect predictions for query sets, using model updated params for specific task
-            predictions = updated_regressor(x_queries[task])
+            predictions = self.regressor(x_queries[task], updated_params)
 
-            # Update task losses
+            # Calculate updated losss and add to task updated losses
             curr_loss = F.mse_loss(predictions, y_queries[task])
-            task_losses.append(curr_loss)
+            total_loss = total_loss + curr_loss
 
         # Backward pass to update meta-model parameters
-        total_loss = torch.stack(task_losses).sum()
-
-        ### #### #### REMOVE
-        # with torch.enable_grad():
-        #     self.optimizer.zero_grad()
-        #     predictions = self.regressor(x_supports)
-        #     meta_loss = F.mse_loss(predictions, y_queries)
-
-        #     meta_loss.backward()
-
-        # state_dict = self.regressor.state_dict()
-
-        # # Manual backward pass
-        # for name, param in self.regressor.named_parameters():
-        #     #grad = param.grad.data
-        #     grad = param.grad
-        #     if grad is None:
-        #         new_param = param
-        #     else:
-        #         new_param = param - alpha * grad.data # gradient descent
-            
-        #     state_dict[name] = new_param
-        
-        # self.regressor.load_state_dict(state_dict)
-
-     
         self.optimizer.zero_grad()
-        predictions = self.regressor(x_supports)
-        meta_loss = F.mse_loss(predictions, y_queries)
-        
-        with torch.no_grad():
-            meta_loss.data = total_loss.data
-
-        meta_loss.backward()
+        total_loss.backward()
 
         for param in self.optimizer.param_groups[0]['params']:
             # Bit of regularisation innit
             nn.utils.clip_grad_value_(param, 10)
-        
         self.optimizer.step()
 
-        self.counter += 1 
-        # Return training accuracy and loss
-        loss = total_loss.item()
-        # Need to use an AvergeMeter class to collect accuracies as we iterate through tasks
+        # Return training loss
+        return total_loss, total_prior_loss
