@@ -4,17 +4,6 @@ from classifiers import *
 import torch.nn as nn
 from collections import OrderedDict
 
-def del_attr(obj, names):
-    if len(names) == 1:
-        delattr(obj, names[0])
-    else:
-        del_attr(getattr(obj, names[0]), names[1:])
-def set_attr(obj, names, val):
-    if len(names) == 1:
-        setattr(obj, names[0], val)
-    else:
-        set_attr(getattr(obj, names[0]), names[1:], val)
-
 class MAML_trainer():
     def __init__(self, classifier, optimizer):
         self.classifier = classifier
@@ -54,7 +43,6 @@ class MAML_trainer():
                     new_param = param - alpha * grad # gradient descent
                 updated_params[name] = new_param
 
-        #print(updated_params['classifier.weight'])
         return updated_params
 
     def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
