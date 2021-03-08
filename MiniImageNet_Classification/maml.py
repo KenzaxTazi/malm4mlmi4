@@ -3,17 +3,7 @@ import torch.nn.functional as F
 from classifiers import *
 import torch.nn as nn
 from collections import OrderedDict
-
-def del_attr(obj, names):
-    if len(names) == 1:
-        delattr(obj, names[0])
-    else:
-        del_attr(getattr(obj, names[0]), names[1:])
-def set_attr(obj, names, val):
-    if len(names) == 1:
-        setattr(obj, names[0], val)
-    else:
-        set_attr(getattr(obj, names[0]), names[1:], val)
+from tools import *
 
 class MAML_trainer():
     def __init__(self, classifier, optimizer):
@@ -54,31 +44,12 @@ class MAML_trainer():
                     new_param = param - alpha * grad # gradient descent
                 updated_params[name] = new_param
 
-        #print(updated_params['classifier.weight'])
         return updated_params
 
-    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
-        '''
-        Perform single outer loop forward and backward pass of MAML algorithm
-
-        Structure:
-        Support sets used for inner loop training
-        Query sets used for outer loop training
-
-        x_supports = [T x K_{support}*N x C x H x W], for inner loop training
-        y_supports = [T x K_{support}*N], for inner loop training
-        x_queries = [T x K_{query}*N x C x H x W], for outer loop update
-        y_queries = [T x K_{query}*N], for outer loop update
-
-        T: Number of tasks -> sometimes called episodes
-        K: K-shot learning
-        N: N-way i.e. number of classes for task
-        C: Channels
-        H: Image Height
-        W: Image Width
-        '''
+    def _outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, train=True):
 
         total_loss = torch.zeros(1)
+        accuracy = AverageMeter()
 
         # Perform inner loop training per task using support sets
         for task in range(x_supports.size(0)):
@@ -91,15 +62,58 @@ class MAML_trainer():
             curr_loss = F.cross_entropy(logits, y_queries[task])
             total_loss = total_loss + curr_loss
 
-        # Backward pass to update meta-model parameters
-        self.optimizer.zero_grad()
-        total_loss.backward()
+            # Determine accuracy
+            pred = torch.argmax(logits, dim=-1)
+            acc = accuracy_topk(pred.data, y_queries[task])
+            accuracy.update(acc.item(), logits.size(0))
 
-        for param in self.optimizer.param_groups[0]['params']:
-            # Bit of regularisation innit
-            nn.utils.clip_grad_value_(param, 10)
-        self.optimizer.step()
+        # Backward pass to update meta-model parameters if in training mode
+        if train:
+            self.optimizer.zero_grad()
+            total_loss.backward()
 
-        # Return training accuracy and loss
+            for param in self.optimizer.param_groups[0]['params']:
+                # Bit of regularisation innit
+                nn.utils.clip_grad_value_(param, 10)
+            self.optimizer.step()
+
+        # Return training loss and accuracy
         loss = total_loss.item()
-        # Need to use an AvergeMeter class to collect accuracies as we iterate through tasks
+        acc = accuracy.avg
+        return loss, acc
+
+        def train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
+            '''
+            Perform single outer loop forward and backward pass of MAML algorithm
+
+            Structure:
+            Support sets used for inner loop training
+            Query sets used for outer loop training
+
+            x_supports = [T x K_{support}*N x C x H x W], for inner loop training
+            y_supports = [T x K_{support}*N], for inner loop training
+            x_queries = [T x K_{query}*N x C x H x W], for outer loop update
+            y_queries = [T x K_{query}*N], for outer loop update
+
+            T: Number of tasks -> sometimes called episodes
+            K: K-shot learning
+            N: N-way i.e. number of classes for task
+            C: Channels
+            H: Image Height
+            W: Image Width
+
+            alpha is inner loop learning rate
+
+            Returns meta-training loss and average accuracy over all tasks
+            '''
+
+            return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha))
+
+        def evaluate(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
+            '''
+            Same as training but the meta-model parameters are not updated
+
+            Returns meta-evaluation loss and average accuracy over tasks
+            '''
+
+            return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha, train=False))
