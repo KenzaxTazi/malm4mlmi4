@@ -1,7 +1,7 @@
 Omniglot_Classification/.DS_Store
 .DS_Store
 .DS_Store
-**/Omniglot_Classification/data
+**/Omniglot_Classification/data/omniglot_resized
 .vscode/settings.json
 Omniglot_Classification/__pycache__/dataprep.cpython-38.pyc
 Omniglot_Classification/__pycache__/maml.cpython-38.pyc
