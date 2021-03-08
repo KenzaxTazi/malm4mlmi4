@@ -16,3 +16,5 @@ Omniglot_Classification/dataprep.py
 .gitignore
 Omniglot_Classification/.ipynb_checkpoints/dataprep-checkpoint.ipynb
 Regression/regressors.py
+**/MiniImageNet_Classification/Data
+
