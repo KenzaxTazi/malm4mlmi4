@@ -9,11 +9,11 @@ import torchvision
 K = 1  # shots or number of updates
 N = 5  # number of classes per task
 update_lr = 0.4 
-meta_batch_size = 32
+meta_batch_size = 10 #32
 conv = True
 
-# Import data
-xtrain, ytrain, xval, yval, xtest, ytest = dp.dataprep(K, N)
+# Import training data
+xtrain_support, xtrain_query, ytrain_support, ytrain_query = dataprep(meta_batch_size, K, N)
   
 # Create model and meta model instances
 classifier = m.Classifier(conv, K, N)
