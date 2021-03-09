@@ -1,30 +1,14 @@
-# MAML for classification
+# MAML for classification 
 
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from collections import OrderedDict
+from tools import *
 
 
 class MetaModel():
-    """
-    Create MAML instance for given model architecture. To replicate paper, we need
-    
-    5-way, 1-shot omniglot:
-        - metatrain_iterations=60000 
-        - meta_batch_size=32
-        - lr=0.4 
-        - num_updates=1
-        - logdir=logs/omniglot5way/
-    20-way, 1-shot omniglot:
-        - metatrain_iterations=60000 
-        - meta_batch_size=16 
-        - num_classes=20 
-        - lr=0.1 
-        - num_updates=5 
-        - logdir=logs/omniglot20way/
-    """
-
+    """ Create MAML instance for given model architecture """
 
     def __init__(self, classifier, update_lr, num_updates, num_classes):
         
@@ -47,8 +31,6 @@ class MetaModel():
         H: Image Height
         W: Image Width
 
-        alpha = inner loop learning rate
-
         return a model copy with updated parameters
         '''
 
@@ -59,10 +41,11 @@ class MetaModel():
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
-            updated_params = self.classifier.state_dict()
+            updated_params = self.classifier.state_dict() # creates a dictionary to input new parameter values
 
             # Manual update
             for  (name, param) in self.classifier.named_parameters():
+
                 grad = param.grad
                 if grad is None:
                     new_param = param
@@ -70,11 +53,10 @@ class MetaModel():
                     new_param = param - self.update_lr * grad # gradient descent
                 updated_params[name] = new_param
 
-        #print(updated_params['classifier.weight'])
         return updated_params
 
 
-    def meta_learn(self, x_supports, y_supports, x_queries, y_queries):
+    def meta_learn(self, x_supports, y_supports, x_queries, y_queries, train=True):
         '''
         Perform single outer loop forward and backward pass of MAML algorithm
 
@@ -96,6 +78,7 @@ class MetaModel():
         '''
   
         total_loss = torch.zeros(1)
+        accuracy = AverageMeter()
 
         # Perform inner loop training per task using support sets
         for batch in range(x_supports.size(0)):
@@ -109,19 +92,25 @@ class MetaModel():
                 curr_loss = F.cross_entropy(logits, y_queries[batch, task])
                 total_loss = total_loss + curr_loss
 
+                # Determine accuracy
+                pred = torch.argmax(logits, dim=-1)
+                acc = accuracy_topk(pred.data, y_queries[batch, task])
+                accuracy.update(acc.item(), logits.size(0))
+
             # Backward pass to update meta-model parameters
-            self.optimizer.zero_grad()
-            total_loss.backward()
+            if train:
+                self.optimizer.zero_grad()
+                total_loss.backward()
 
-        for param in self.optimizer.param_groups[0]['params']:
-            # Bit of regularisation innit
-            nn.utils.clip_grad_value_(param, 10)
-        self.optimizer.step()
+                for param in self.optimizer.param_groups[0]['params']:
+                    # Bit of regularisation innit
+                    nn.utils.clip_grad_value_(param, 10)
+                self.optimizer.step()
 
-        # Return training accuracy and loss
-        loss = total_loss.item()
-
-        # Need to use an AvergeMeter class to collect accuracies as we iterate through tasks
+            # Return training accuracy and loss
+            loss = total_loss.item()
+            acc = accuracy.avg
+            return loss, acc
 
 
 
