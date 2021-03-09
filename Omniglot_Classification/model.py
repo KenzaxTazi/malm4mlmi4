@@ -14,46 +14,49 @@ class Classifier(MetaModule):
         super().__init__()
 
         self.conv = conv
-        self.bn = nn.BatchNorm2d(K*N)
+        self.bn = nn.BatchNorm2d(64)
         self.softmax = nn.Softmax(N)
         
         if self.conv == True:
-            self.conv1 = MetaConv2d(1, 1, 3) #3x3 convolutions 64 filters
-            self.conv2 = MetaConv2d(1, 1, 3)
-            self.conv3 = MetaConv2d(1, 1, 3)
-            self.conv4 = MetaConv2d(1, 1, 3) 
-            self.fc1 = MetaLinear(64, 64)
+            self.conv1 = MetaConv2d(1, 64, 3, padding=1) #3x3 convolutions 64 filters
+            self.conv2 = MetaConv2d(64, 64, 3, padding=1)
+            self.conv3 = MetaConv2d(64, 64, 3, padding=1)
+            self.conv4 = MetaConv2d(64, 64, 3, padding=1)
+            self.fc1 = MetaLinear(64, N)
 
         else:
             self.fc1 = MetaLinear(28*28, 256)
-            self.fc2 = MetaLinear(128, 64)
-            self.fc3 = MetaLinear(64, 64)
+            self.fc2 = MetaLinear(256, 128)
+            self.fc3 = MetaLinear(128, 64)
             self.fc4 = MetaLinear(64, 64)
             self.fc5 = MetaLinear(64, 64)
 
 
-    def forward(self, x):
+    def forward(self, x, params=None):
         '''
-        x is [K*N x C x H x W] 
-        K*N: batch size
+        x is [K * N x C x H x W] 
+        
+        K = shots, class instances 
+        N = number of classes for task
         C = Channels
         H = Height
         W = Width
         '''
 
         if self.conv == True:
-            x = F.max_pool2d(F.relu(self.bn(self.conv1(x))), kernerl_size=2)
-            x = F.max_pool2d(F.relu(self.bn(self.conv2(x))), kernerl_size=2)
-            x = F.max_pool2d(F.relu(self.bn(self.conv3(x))), kernerl_size=2)
-            x = F.max_pool2d(F.relu(self.bn(self.conv4(x))), kernerl_size=2)
-    
-            x = self.softmax(self.fc1(x))
+            x = F.max_pool2d(F.relu(self.bn(self.conv1(x, params=self.get_subdict(params,'conv1')))), kernel_size=2)
+            x = F.max_pool2d(F.relu(self.bn(self.conv2(x, params=self.get_subdict(params,'conv2')))), kernel_size=2)
+            x = F.max_pool2d(F.relu(self.bn(self.conv3(x, params=self.get_subdict(params,'conv3')))), kernel_size=2)
+            x = F.max_pool2d(F.relu(self.bn(self.conv4(x, params=self.get_subdict(params,'conv4')))), kernel_size=2)
+            x = x.view((x.size(0), -1))  # reshape tensor 
+            x = self.fc1(x, params=self.get_subdict(params,'fc1'))
 
         else:
-            x = F.relu(self.bn(self.fc1(x)))
-            x = F.relu(self.bn(self.fc2(x)))
-            x = F.relu(self.bn(self.fc3(x)))
-            x = F.relu(self.bn(self.fc4(x)))
-            x = self.sofmax(self.fc5(x))
+            x = F.relu(self.bn(self.fc1(x, params=self.get_subdict(params,'fc1'))))
+            x = F.relu(self.bn(self.fc2(x, params=self.get_subdict(params,'fc2'))))
+            x = F.relu(self.bn(self.fc3(x, params=self.get_subdict(params,'fc3'))))
+            x = F.relu(self.bn(self.fc4(x, params=self.get_subdict(params,'fc4'))))
+            x = x.view((x.size(0), -1))  # reshape tensor 
+            x = self.fc5(x, params=self.get_subdict(params,'fc5'))
             
         return x
