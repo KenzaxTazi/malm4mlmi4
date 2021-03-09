@@ -34,9 +34,9 @@ def train_test_splitting():
 
     # Data splitting 
     np.random.shuffle(char_list)
-    training_char = char_list[0:120]
-    validation_char = char_list [120:125]
-    test_char = char_list[125:130]
+    training_char = char_list[0:120]  # [0:1200]
+    validation_char = char_list [120:125]  # [1200:1250]
+    test_char = char_list[125:130]  # [1250:-1]
 
     return  training_char, validation_char, test_char
 
@@ -46,11 +46,11 @@ def load_data(batch_size, K, N, char_list, training_set=False):
     """ 
     Load images, augment and create onehot label. Returns:
         xs_support = [T x N x K x C x H x W]
-        ys_support = [T x N x K x Z]
+        ys_support = [T x N x K]
     
     and optionally:
         xs_query = [T x N x K_query x C x H x W]
-        ys_query = [T x N x K_query x Z]
+        ys_query = [T x N x K_query]
 
     T: Number of tasks -> sometimes called episodes
     K: K-shot learning
@@ -58,7 +58,6 @@ def load_data(batch_size, K, N, char_list, training_set=False):
     C: Channels
     H: Image Height
     W: Image Width
-    Z: total number of labels (1623*4)
     """
 
     ys_support = []
@@ -97,8 +96,7 @@ def load_data(batch_size, K, N, char_list, training_set=False):
                     # label
                     filename =  os.path.basename(f)
                     index, _ = filename.split(sep='_')
-                    label = np.zeros(1623*4)
-                    label[int(index) + 1623*i -1] = 1
+                    label = n
                     y_instances.append(label)
 
                 x_support = x_instances[:K]
@@ -147,7 +145,7 @@ def shuffle_and_shape(xs, ys, batch_size):
     x_shp = xs_tensor.shape
     y_shp = ys_tensor.shape
     xs_batched = torch.reshape(xs_tensor, (-1, batch_size, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
-    ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-3]*y_shp[-2], y_shp[-1]))
+    ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-2]*y_shp[-1]))
 
     return xs_batched, ys_batched
 
@@ -161,10 +159,10 @@ def dataprep(batch_size, K, N):
         xval, yval, xtest, ytest
 
     with shape:
-    x or x_support = [B x T x N * K x 2 x C x H x W]
-    y or y_support = [B x T x N * K x 2 x Z]
-    x_query = [B x T x N * K_query x 2 x C x H x W]
-    y_query = [B x T x N * K_query x 2 x Z]
+    x or x_support = [B x T x N * K x C x H x W]
+    y or y_support = [B x T x N * K]
+    x_query = [B x T x N * K_query x C x H x W]
+    y_query = [B x T x N * K_query]
 
     where:
     B: Number of batches
@@ -178,11 +176,11 @@ def dataprep(batch_size, K, N):
     """
 
     training_char, validation_char, test_char = train_test_splitting()
-    
-    xtrain_support, xtrain_query, ytrain_support, ytrain_query = load_data(batch_size, K, N, training_char, training_set=True)
+
+    xtrain_support,  ytrain_support, xtrain_query, ytrain_query = load_data(batch_size, K, N, training_char, training_set=True)
     #xval, yval = load_data(batch_size, K, N, validation_char)
     #xtest, ytest = load_data(batch_size, K, N, test_char)
 
-    return xtrain_support, xtrain_query, ytrain_support, ytrain_query #xval, yval, xtest, ytest
+    return xtrain_support, ytrain_support, xtrain_query, ytrain_query #xval, yval, xtest, ytest
 
 
