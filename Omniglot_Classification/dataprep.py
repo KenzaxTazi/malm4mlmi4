@@ -34,9 +34,9 @@ def train_test_splitting():
 
     # Data splitting 
     np.random.shuffle(char_list)
-    training_char = char_list[0:120]  # [0:1200]
-    validation_char = char_list [120:125]  # [1200:1250]
-    test_char = char_list[125:130]  # [1250:-1]
+    training_char = char_list[0:1200]  # [0:1200]
+    validation_char = char_list [1200:1250]  # [1200:1250]
+    test_char = char_list[1250:-1]  # [1250:-1]
 
     return  training_char, validation_char, test_char
 
@@ -96,20 +96,33 @@ def load_data(batch_size, K, N, char_list, training_set=False):
                     # label
                     filename =  os.path.basename(f)
                     index, _ = filename.split(sep='_')
-                    label = n
+                    label = np.zeros(N)
+                    label[n] = 1
                     y_instances.append(label)
 
-                x_support = x_instances[:K]
-                y_support = y_instances[:K]
+                
                 if training_set == True:
-                    x_query = x_instances[K:]
-                    y_query = y_instances[K:]
+                    try:
+                        x_support = x_instances[:K]
+                        y_support = y_instances[:K]
+                        x_query = x_instances[K:21]
+                        y_query = y_instances[K:21]
+                        y_classes_query.append(y_query)
+                        x_classes_query.append(x_query)
+                        y_classes_support.append(y_support)
+                        x_classes_support.append(x_support)
+                    except Exception:
+                        pass
+                    
+                else:
+                    try:
+                        x_support = x_instances[:K]
+                        y_support = y_instances[:K]
+                        y_classes_query.append(y_query)
+                        x_classes_query.append(x_query)
+                    except Exception:
+                        pass
 
-                y_classes_support.append(y_support)
-                x_classes_support.append(x_support)
-                if training_set == True:    
-                    y_classes_query.append(y_query)
-                    x_classes_query.append(x_query)
 
         ys_support.append(y_classes_support)
         xs_support.append(x_classes_support)   
@@ -145,7 +158,7 @@ def shuffle_and_shape(xs, ys, batch_size):
     x_shp = xs_tensor.shape
     y_shp = ys_tensor.shape
     xs_batched = torch.reshape(xs_tensor, (-1, batch_size, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
-    ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-2]*y_shp[-1]))
+    ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-3]*y_shp[-2], y_shp[-1]))
 
     return xs_batched, ys_batched
 
