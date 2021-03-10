@@ -41,6 +41,20 @@ def train_test_splitting():
     return  training_char, validation_char, test_char
 
 
+def augment(char_list):
+    """ Returns list of characther paths with augmentation suffix in string """
+    augm_list = []
+    rotations = ['0', '90', '180', '270']
+
+    for char in char_list:
+        for rot in rotations:
+            augm_char = char + '__' + rot
+            augm_list.append(augm_char)
+
+    np.random.shuffle(augm_list)
+
+    return augm_list
+
 
 def load_data(batch_size, K, N, char_list, training_set=False):
     """ 
@@ -59,6 +73,9 @@ def load_data(batch_size, K, N, char_list, training_set=False):
     H: Image Height
     W: Image Width
     """
+    
+    augm_list = augment(char_list) # augment character list 
+    task_list = np.reshape(np.array(augm_list), (-1, N)) # reshape list into tasks of N characters
 
     ys_support = []
     xs_support = []
@@ -66,69 +83,53 @@ def load_data(batch_size, K, N, char_list, training_set=False):
         xs_query = []
         ys_query = []
 
-    rot = [0, 90, 180, 270]
+    for task in task_list:
+        x_task_support = []
+        y_task_support = []
 
-    for folder in char_list:
-        for i in range(4):
+        if training_set == True:
+            x_task_query = []
+            y_task_query = []
 
-            x_classes_support = []
-            y_classes_support = []
+        for n in range(N):
+            x_instances= []
+            y_instances= []
+
+            path, rot = task[n].split(sep='__')
+            files = glob(os.path.join(path, '*.png'))
+
+            for f in files:
+                # image
+                image = Image.open(f)
+                rot_image = image.rotate(int(rot))
+                image_arr = np.array(rot_image, dtype=int)
+                reshaped_image = image_arr.reshape(1, 28, 28)
+                x_instances.append(reshaped_image)
+                
+                # label
+                filename = os.path.basename(f)
+                index, _ = filename.split(sep='_')
+                label = np.zeros(N)
+                label[n] = 1
+                y_instances.append(label)
+            
+            x_support = x_instances[:K]
+            y_support = y_instances[:K]
+            y_task_support.append(y_support)
+            x_task_support.append(x_support)
 
             if training_set == True:
-                x_classes_query = []
-                y_classes_query = []
+                x_query = x_instances[K:]
+                y_query = y_instances[K:]
+                y_task_query.append(y_query)
+                x_task_query.append(x_query)
 
-            for n in range(N):
+        ys_support.append(y_task_support)
+        xs_support.append(x_task_support)
 
-                x_instances= []
-                y_instances= []
-    
-                files = glob(os.path.join(folder, '*.png'))
-
-                for f in files:
-                    # images
-                    image = Image.open(f)
-                    rot_image = image.rotate(rot[i])
-                    image_arr = np.array(rot_image, dtype=int)
-                    reshaped_image = image_arr.reshape(1, 28, 28)
-                    x_instances.append(reshaped_image)
-                    
-                    # label
-                    filename =  os.path.basename(f)
-                    index, _ = filename.split(sep='_')
-                    label = np.zeros(N)
-                    label[n] = 1
-                    y_instances.append(label)
-
-                
-                if training_set == True:
-                    try:
-                        x_support = x_instances[:K]
-                        y_support = y_instances[:K]
-                        x_query = x_instances[K:21]
-                        y_query = y_instances[K:21]
-                        y_classes_query.append(y_query)
-                        x_classes_query.append(x_query)
-                        y_classes_support.append(y_support)
-                        x_classes_support.append(x_support)
-                    except Exception:
-                        pass
-                    
-                else:
-                    try:
-                        x_support = x_instances[:K]
-                        y_support = y_instances[:K]
-                        y_classes_support.append(y_support)
-                        x_classes_support.append(x_support)
-                    except Exception:
-                        pass
-
-
-        ys_support.append(y_classes_support)
-        xs_support.append(x_classes_support)   
         if training_set == True:  
-            ys_query.append(y_classes_query)
-            xs_query.append(x_classes_query)  
+            ys_query.append(y_task_query)
+            xs_query.append(x_task_query)  
 
     xs_tensor, ys_tensor = shuffle_and_shape(xs_support, ys_support, batch_size)
 
