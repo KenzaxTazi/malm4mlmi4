@@ -46,10 +46,10 @@ def get_one_task_data(X_all, K_shot, K_query, N_way):
 
 def get_all_tasks(X_all, T, K_shot, K_query, N_way):
 
-    X_support = torch.zeros(T, K_shot*N_way, X.size(-3), X.size(-2), X.size(-1))
+    X_support = torch.zeros(T, K_shot*N_way, X_all.size(-3), X_all.size(-2), X_all.size(-1))
     y_support = torch.zeros(T, K_shot*N_way)
 
-    X_query = torch.zeros(T, K_query*N_way, X.size(-3), X.size(-2), X.size(-1))
+    X_query = torch.zeros(T, K_query*N_way, X_all.size(-3), X_all.size(-2), X_all.size(-1))
     y_query = torch.zeros(T, K_query*N_way)
 
     for t in range(T):
