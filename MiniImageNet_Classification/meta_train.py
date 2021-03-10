@@ -89,7 +89,7 @@ if __name__ == "__main__":
     B = args.B
     T = args.T
     seed = args.seed
-    torch.manual(seed)
+    torch.manual_seed(seed)
 
     # Save the command run
     if not os.path.isdir('CMDs'):
