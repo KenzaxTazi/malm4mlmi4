@@ -1,7 +1,7 @@
 from PIL import Image
 import glob
 
-image_path = '/data/*/*/*'
+image_path = 'data/*/*/*/'
 
 all_images = glob.glob(image_path + '*')
 
