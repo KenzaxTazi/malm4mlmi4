@@ -49,6 +49,28 @@ def train(train_loader, maml_trainer, epoch, device, lr, print_freq=1):
                   'Accuracy {acc.val:.4f} ({acc.avg:.4f})\t'.format(
                       epoch, i, len(train_loader), acc=accs))
 
+def validate(val_loader, maml_trainer, device, lr):
+    '''
+        Run evaluation
+    '''
+    accs = AverageMeter()
+    losses = AverageMeter()
+    for i, (x_support, y_support, x_query, y_query) in enumerate(val_loader):
+
+        x_support = x_support.to(device)
+        y_support = y_support.to(device)
+        x_query = x_query.to(device)
+        y_query = y_query.to(device)
+
+        loss, acc = maml_trainer.evaluate(x_support, y_support, x_query, y_query, alpha=lr)
+        losses.update(loss, x_support.size(0))
+        accs.update(acc, x_support.size(0))
+
+    print('Test\t  Loss: {loss.avg:.3f}\n'
+          .format(loss=losses))
+    print('Test\t  Accuracy: {acc.avg:.3f}\n'
+          .format(acc=accs))
+
 if __name__ == "__main__":
 
     # Get command line arguments
@@ -106,3 +128,13 @@ if __name__ == "__main__":
     for epoch in range(epochs):
         # train for one epoch
         print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
+        train(train_dl, maml_trainer, epoch, device, lr)
+        scheduler.step()
+
+        # Evaluate on valdation set
+        validate(val_dl, maml_trainer, device, lr)
+
+
+    # Save the meta-model
+    state = model.state_dict()
+    torch.save(state, out_file)
