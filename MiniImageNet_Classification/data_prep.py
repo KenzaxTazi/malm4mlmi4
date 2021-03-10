@@ -34,7 +34,7 @@ def get_set(X_all, K, N_way):
             X_set[counter] = X_select
             y_set[counter] = i
             counter += 1
-    return X_set, y_set
+    return X_set, torch.LongTensor(y_set)
 
 
 def get_one_task_data(X_all, K_shot, K_query, N_way):
