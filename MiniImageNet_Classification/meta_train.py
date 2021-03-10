@@ -22,7 +22,7 @@ def get_default_device():
         print("No CUDA found")
         return torch.device('cpu')
 
-def train(train_loader, maml_trainer, epoch, device, lr, print_freq=1):
+def train(train_loader, maml_trainer, epoch, device, lr, print_freq=5):
     '''
         Run one train epoch
     '''
