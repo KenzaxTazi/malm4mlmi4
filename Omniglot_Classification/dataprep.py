@@ -118,8 +118,8 @@ def load_data(batch_size, K, N, char_list, training_set=False):
                     try:
                         x_support = x_instances[:K]
                         y_support = y_instances[:K]
-                        y_classes_query.append(y_query)
-                        x_classes_query.append(x_query)
+                        y_classes_support.append(y_support)
+                        x_classes_support.append(x_support)
                     except Exception:
                         pass
 
