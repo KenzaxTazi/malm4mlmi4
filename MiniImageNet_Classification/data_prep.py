@@ -68,7 +68,7 @@ def get_train_data(T=600, K_shot=1, K_query=128, N_way=5):
     N_way = number of classes per task
     '''
     file = './Data/mini-imagenet-cache-train.pkl'
-    X_all = load(file, 64, 600, 84, 84, 3)
+    X_all = load(file, 64, 600, 84, 3)
 
     return get_all_tasks(X_all, T, K_shot, K_query, N_way)
 
@@ -79,7 +79,7 @@ def get_val_data(T=600, K_shot=1, K_query=128, N_way=5):
     N_way = number of classes per task
     '''
     file = './Data/mini-imagenet-cache-val.pkl'
-    X_all = load(file, 16, 600, 84, 84, 3)
+    X_all = load(file, 16, 600, 84, 3)
 
     return get_all_tasks(X_all, T, K_shot, K_query, N_way)
 
@@ -90,6 +90,6 @@ def get_test_data(T=600, K_shot=1, K_query=128, N_way=5):
     N_way = number of classes per task
     '''
     file = './Data/mini-imagenet-cache-test.pkl'
-    X_all = load(file, 20, 600, 84, 84, 3)
+    X_all = load(file, 20, 600, 84, 3)
 
     return get_all_tasks(X_all, T, K_shot, K_query, N_way)
