@@ -80,6 +80,7 @@ if __name__ == "__main__":
     commandLineParser.add_argument('--K', type=int, default=1, help="Specify K_shot learning")
     commandLineParser.add_argument('--B', type=int, default=4, help="Specify task batch size")
     commandLineParser.add_argument('--T', type=int, default=600, help="Specify number of training tasks")
+    commandLineParser.add_argument('--K_query', type=int, default=595, help="For memory may need to specify K_query")
     commandLineParser.add_argument('--seed', type=int, default=1, help='Specify seed')
 
     args = commandLineParser.parse_args()
@@ -88,6 +89,7 @@ if __name__ == "__main__":
     K = args.K
     B = args.B
     T = args.T
+    K_query = args.K_query
     seed = args.seed
     torch.manual_seed(seed)
 
@@ -101,8 +103,8 @@ if __name__ == "__main__":
     device = get_default_device()
 
     # Load the data as tensors
-    X_support_train, y_support_train, X_query_train, y_query_train = get_train_data(T=T, K_shot=K, K_query=600-K, N_way=N)
-    X_support_val, y_support_val, X_query_val, y_query_val = get_val_data(T=int(0.1*T), K_shot=K, K_query=600-K, N_way=N)
+    X_support_train, y_support_train, X_query_train, y_query_train = get_train_data(T=T, K_shot=K, K_query=K_query, N_way=N)
+    X_support_val, y_support_val, X_query_val, y_query_val = get_val_data(T=int(0.1*T), K_shot=K, K_query=K_query, N_way=N)
 
     # Use dataloader to handle batches easily
     train_ds = TensorDataset(X_support_train, y_support_train, X_query_train, y_query_train)
