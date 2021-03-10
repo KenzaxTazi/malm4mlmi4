@@ -63,8 +63,7 @@ class MAML_trainer():
             total_loss = total_loss + curr_loss
 
             # Determine accuracy
-            pred = torch.argmax(logits, dim=-1)
-            acc = accuracy_topk(pred.data, y_queries[task])
+            acc = accuracy_topk(logits, y_queries[task])
             accuracy.update(acc.item(), logits.size(0))
 
         # Backward pass to update meta-model parameters if in training mode
@@ -107,7 +106,7 @@ class MAML_trainer():
         Returns meta-training loss and average accuracy over all tasks
         '''
         self.classifier.train()
-        return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha))
+        return(self._outer_loop_train(x_supports, y_supports, x_queries, y_queries, alpha))
 
     def evaluate(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
         '''
@@ -116,4 +115,4 @@ class MAML_trainer():
         Returns meta-evaluation loss and average accuracy over tasks
         '''
         self.classifier.eval()
-        return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha, train=False))
+        return(self._outer_loop_train(x_supports, y_supports, x_queries, y_queries, alpha, train=False))
