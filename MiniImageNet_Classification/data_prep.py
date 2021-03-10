@@ -19,11 +19,11 @@ def load(file_location, classes, class_size, img_size, channels):
 
 
 def get_set(X_all, K, N_way):
-    N_max = X.size(0)
-    K_max = X.size(1)
+    N_max = X_all.size(0)
+    K_max = X_all.size(1)
 
-    X_set = torch.zeros(K*N_way, X.size(-3), X.size(-2), X.size(-1))
-    y_set = torch.zeros(K_shot*N_way)
+    X_set = torch.zeros(K*N_way, X_all.size(-3), X_all.size(-2), X_all.size(-1))
+    y_set = torch.zeros(K*N_way)
 
     counter = 0
     for i in range(N_way):
@@ -34,7 +34,7 @@ def get_set(X_all, K, N_way):
             X_set[counter] = X_select
             y_set[counter] = i
             counter += 1
-    return X_set, torch.LongTensor(y_set)
+    return X_set, y_set.long()
 
 
 def get_one_task_data(X_all, K_shot, K_query, N_way):
