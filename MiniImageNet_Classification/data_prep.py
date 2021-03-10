@@ -59,7 +59,7 @@ def get_all_tasks(X_all, T, K_shot, K_query, N_way):
         X_query[t] = X_query_t
         y_query[t] = y_query_t
 
-    return X_support, y_support, X_query, y_query
+    return X_support, y_support.long(), X_query, y_query.long()
 
 def get_train_data(T=600, K_shot=1, K_query=128, N_way=5):
     '''
