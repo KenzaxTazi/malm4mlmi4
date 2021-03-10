@@ -106,7 +106,7 @@ class MAML_trainer():
 
             Returns meta-training loss and average accuracy over all tasks
             '''
-
+            self.classifier.train()
             return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha))
 
         def evaluate(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
@@ -115,5 +115,5 @@ class MAML_trainer():
 
             Returns meta-evaluation loss and average accuracy over tasks
             '''
-
+            self.classifier.eval()
             return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha, train=False))
