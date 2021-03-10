@@ -37,7 +37,8 @@ class MetaModel():
         # Forward pass using support sets
         with torch.enable_grad():
             logits = self.classifier(x_support)
-            loss = F.cross_entropy(logits, y_support)
+            y_support_indices = torch.argmax(y_support, dim=1)
+            loss = F.cross_entropy(logits, y_support_indices)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
@@ -56,7 +57,7 @@ class MetaModel():
         return updated_params
 
 
-    def meta_learn(self, x_supports, y_supports, x_queries, y_queries, train=True):
+    def meta_learn(self, x_supports, y_supports, x_queries, y_queries, meta_learn_iterations=1, train=True):
         '''
         Perform single outer loop forward and backward pass of MAML algorithm
 
@@ -80,23 +81,24 @@ class MetaModel():
         total_loss = torch.zeros(1)
         accuracy = AverageMeter()
 
-        # Perform inner loop training per task using support sets
+        
         for batch in range(x_supports.size(0)):
             for task in range(x_supports.size(1)):
+                # Perform inner loop training per task using support sets
                 updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task])
 
                 # Collect logit predictions for query sets, using updated params for specific task
                 logits = self.classifier(x_queries[batch, task], updated_params)
+                y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
 
                 # Update task losses
-                curr_loss = F.cross_entropy(logits, y_queries[batch, task])
+                curr_loss = F.cross_entropy(logits, y_queries_indices)
                 total_loss = total_loss + curr_loss
 
                 # Determine accuracy
-                pred = torch.argmax(logits, dim=-1)
-                acc = accuracy_topk(pred.data, y_queries[batch, task])
+                acc = accuracy_topk(logits, y_queries_indices)
                 accuracy.update(acc.item(), logits.size(0))
-
+                
             # Backward pass to update meta-model parameters
             if train:
                 self.optimizer.zero_grad()
