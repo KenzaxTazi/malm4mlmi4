@@ -82,38 +82,38 @@ class MAML_trainer():
         acc = accuracy.avg
         return loss, acc
 
-        def train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
-            '''
-            Perform single outer loop forward and backward pass of MAML algorithm
+    def train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
+        '''
+        Perform single outer loop forward and backward pass of MAML algorithm
 
-            Structure:
-            Support sets used for inner loop training
-            Query sets used for outer loop training
+        Structure:
+        Support sets used for inner loop training
+        Query sets used for outer loop training
 
-            x_supports = [T x K_{support}*N x C x H x W], for inner loop training
-            y_supports = [T x K_{support}*N], for inner loop training
-            x_queries = [T x K_{query}*N x C x H x W], for outer loop update
-            y_queries = [T x K_{query}*N], for outer loop update
+        x_supports = [T x K_{support}*N x C x H x W], for inner loop training
+        y_supports = [T x K_{support}*N], for inner loop training
+        x_queries = [T x K_{query}*N x C x H x W], for outer loop update
+        y_queries = [T x K_{query}*N], for outer loop update
 
-            T: Number of tasks -> sometimes called episodes
-            K: K-shot learning
-            N: N-way i.e. number of classes for task
-            C: Channels
-            H: Image Height
-            W: Image Width
+        T: Number of tasks -> sometimes called episodes
+        K: K-shot learning
+        N: N-way i.e. number of classes for task
+        C: Channels
+        H: Image Height
+        W: Image Width
 
-            alpha is inner loop learning rate
+        alpha is inner loop learning rate
 
-            Returns meta-training loss and average accuracy over all tasks
-            '''
-            self.classifier.train()
-            return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha))
+        Returns meta-training loss and average accuracy over all tasks
+        '''
+        self.classifier.train()
+        return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha))
 
-        def evaluate(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
-            '''
-            Same as training but the meta-model parameters are not updated
+    def evaluate(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
+        '''
+        Same as training but the meta-model parameters are not updated
 
-            Returns meta-evaluation loss and average accuracy over tasks
-            '''
-            self.classifier.eval()
-            return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha, train=False))
+        Returns meta-evaluation loss and average accuracy over tasks
+        '''
+        self.classifier.eval()
+        return(self._outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha, train=False))
