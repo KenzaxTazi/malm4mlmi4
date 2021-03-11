@@ -15,7 +15,6 @@ class Classifier(MetaModule):
 
         self.conv = conv
         self.bn = nn.BatchNorm2d(64, track_running_stats=False)
-        self.softmax = nn.Softmax(dim=0)
         
         if self.conv == True:
             self.conv1 = MetaConv2d(1, 64, 3, padding=1) #3x3 convolutions 64 filters
@@ -49,7 +48,7 @@ class Classifier(MetaModule):
             x = F.max_pool2d(F.relu(self.bn(self.conv3(x, params=self.get_subdict(params, 'conv3')))), kernel_size=2)
             x = F.max_pool2d(F.relu(self.bn(self.conv4(x, params=self.get_subdict(params, 'conv4')))), kernel_size=2)
             x = x.view((x.size(0), -1))  # reshape tensor 
-            x = self.softmax(self.fc1(x, params=self.get_subdict(params, 'fc1')))
+            x = self.fc1(x, params=self.get_subdict(params, 'fc1'))
 
         else:
             x = F.relu(self.bn(self.fc1(x, params=self.get_subdict(params, 'fc1'))))
@@ -57,6 +56,6 @@ class Classifier(MetaModule):
             x = F.relu(self.bn(self.fc3(x, params=self.get_subdict(params, 'fc3'))))
             x = F.relu(self.bn(self.fc4(x, params=self.get_subdict(params, 'fc4'))))
             x = x.view((x.size(0), -1))  # reshape tensor 
-            x = self.softmax(self.fc5(x, params=self.get_subdict(params, 'fc5')))
+            x = self.fc5(x, params=self.get_subdict(params, 'fc5'))
             
         return x
