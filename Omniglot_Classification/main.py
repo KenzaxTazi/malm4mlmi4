@@ -27,7 +27,7 @@ if __name__ == '__main__':
     K = 1
     N = 5
     lr = 0.4
-    meta_batch_size = 1 #32
+    meta_batch_size = 5 #32
     conv = True
     meta_training_iterations = 60
 
