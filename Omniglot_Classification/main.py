@@ -2,8 +2,6 @@
 import model as m
 import maml
 import dataprep as dp
-import torch
-import torchvision
 
 """
 MAML Omniglot Experiment
@@ -29,13 +27,13 @@ if __name__ == '__main__':
     K = 1
     N = 5
     lr = 0.4
-    meta_batch_size = 10  # 32
+    meta_batch_size = 1 #32
     conv = True
     meta_training_iterations = 60
 
     # Import training data
     xtrain_support, ytrain_support, xtrain_query, ytrain_query = dp.dataprep(meta_batch_size, K, N)
-    
+  
     # Create model and meta model instances
     classifier = m.Classifier(conv, K, N)
     meta_model = maml.MetaModel(classifier, lr, K, N)

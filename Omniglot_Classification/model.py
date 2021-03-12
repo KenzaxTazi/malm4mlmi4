@@ -11,7 +11,7 @@ class Classifier(MetaModule):
 
     def __init__(self, conv, K, N):
 
-        super().__init__()
+        super(Classifier, self).__init__()
 
         self.conv = conv
         self.bn = nn.BatchNorm2d(64, track_running_stats=False)
