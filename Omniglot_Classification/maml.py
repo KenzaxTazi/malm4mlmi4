@@ -51,16 +51,18 @@ class MetaModel():
             else:
                 #print('why is this not changing? ', steps * self.update_lr * grad )
                 new_param = param - steps * self.update_lr * grad  # gradient descent
-            '''
-            if name == 'conv3.bias':
-                print('Grad : ', grad)
-            '''
+            
+            if name == 'conv2.weight':
+                print('Old param ', param)
+                print('New param ', new_param)
+                print('Grad', grad)
+            
             updated_params[name] = new_param
 
         return updated_params
 
 
-    def meta_learn(self, x_supports, y_supports, x_queries, y_queries, meta_learn_iterations=1, train=True):
+    def meta_learn(self, x_supports, y_supports, x_queries, y_queries, epochs=1, train=True):
         '''
         Perform single outer loop forward and backward pass of MAML algorithm
 
@@ -84,45 +86,46 @@ class MetaModel():
         total_loss = torch.zeros(1)
         accuracy = AverageMeter()
 
-        for batch in range(x_supports.size(0)):
-            for task in range(x_supports.size(1)):
+        for e in epochs:
+            for batch in range(x_supports.size(0)):
+                for task in range(x_supports.size(1)):
 
-                # Perform inner loop training per task using support sets
-                if train == True:
-                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
-                else:
-                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=3)
+                    # Perform inner loop training per task using support sets
+                    if train == True:
+                        updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
+                    else:
+                        updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=3)
 
-                # Collect logit predictions for query sets, using updated params for specific task
-                logits = self.classifier(x_queries[batch, task], updated_params)
-               
-                # Calculate query task losses
-                y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
-                curr_loss = F.cross_entropy(logits, y_queries_indices)
-                print('curr_loss: ', curr_loss)
-                total_loss = total_loss + curr_loss
+                    # Collect logit predictions for query sets, using updated params for specific task
+                    logits = self.classifier(x_queries[batch, task], updated_params)
                 
-                # Determine accuracy
-                acc = accuracy_topk(logits, y_queries_indices)
-                print('accuracy: ', acc)
-                accuracy.update(acc.item(), logits.size(0))
+                    # Calculate query task losses
+                    y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
+                    curr_loss = F.cross_entropy(logits, y_queries_indices)
+                    #print('curr_loss: ', curr_loss)
+                    total_loss = total_loss + curr_loss
+                    
+                    # Determine accuracy
+                    acc = accuracy_topk(logits, y_queries_indices)
+                    print('accuracy: ', acc)
+                    accuracy.update(acc.item(), logits.size(0))
 
-            print('total_loss is: {} for batch number {}'.format(total_loss, batch))    
+                #print('total_loss is: {} for batch number {}'.format(total_loss, batch))    
 
-        # Backward pass to update meta-model parameters for each batch 
-            if train: 
-                with torch.autograd.set_detect_anomaly(True):              
-                    self.optimizer.zero_grad()
-                    total_loss.backward(retain_graph=True)
-                    for param in self.optimizer.param_groups[0]['params']:
-                        # Bit of regularisation innit
-                        nn.utils.clip_grad_value_(param, 10)
-                    self.optimizer.step()
-                    #self.zero_grad()
+            # Backward pass to update meta-model parameters for each batch 
+                if train: 
+                    with torch.autograd.set_detect_anomaly(True):              
+                        self.optimizer.zero_grad()
+                        total_loss.backward()
+                        for param in self.optimizer.param_groups[0]['params']:
+                            # Bit of regularisation innit
+                            nn.utils.clip_grad_value_(param, 10)
+                        self.optimizer.step()
+                        #self.zero_grad()
 
-        # Return training accuracy and loss
-        loss = total_loss.item()
-        acc = accuracy.avg
+            # Return training accuracy and loss
+            loss = total_loss.item()
+            acc = accuracy.avg
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc

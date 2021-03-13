@@ -27,9 +27,9 @@ if __name__ == '__main__':
     K = 1
     N = 5
     lr = 0.4
-    meta_batch_size = 5 #32
+    meta_batch_size = 32
     conv = True
-    meta_training_iterations = 60
+    epochs = 150
 
     # Import training data
     xtrain_support, ytrain_support, xtrain_query, ytrain_query = dp.dataprep(meta_batch_size, K, N)
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     meta_model = maml.MetaModel(classifier, lr, K, N)
 
     # Train and test
-    meta_model.meta_learn(xtrain_support, ytrain_support, xtrain_query, ytrain_query, meta_learn_iterations=meta_training_iterations, train=True)
+    meta_model.meta_learn(xtrain_support, ytrain_support, xtrain_query, ytrain_query, epochs=epochs, train=True)
 
 
 
