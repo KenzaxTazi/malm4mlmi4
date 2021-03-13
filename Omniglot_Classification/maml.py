@@ -86,7 +86,7 @@ class MetaModel():
         total_loss = torch.zeros(1)
         accuracy = AverageMeter()
 
-        for e in epochs:
+        for e in range(epochs):
             for batch in range(x_supports.size(0)):
                 for task in range(x_supports.size(1)):
 
