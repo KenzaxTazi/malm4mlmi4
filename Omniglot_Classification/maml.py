@@ -82,6 +82,7 @@ class MetaModel():
         accuracy = AverageMeter()
 
         for e in range(epochs):
+            print(e)
             for batch in range(x_supports.size(0)):
                 for task in range(x_supports.size(1)):
 
@@ -102,7 +103,7 @@ class MetaModel():
                     
                     # Determine accuracy
                     acc = accuracy_topk(logits, y_queries_indices)
-                    print('accuracy: ', acc)
+                    
                     accuracy.update(acc.item(), logits.size(0))
 
                 #print('total_loss is: {} for batch number {}'.format(total_loss, batch))    
@@ -121,6 +122,7 @@ class MetaModel():
             # Return training accuracy and loss
             loss = total_loss.item()
             acc = accuracy.avg
+            print('accuracy: ', acc)
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
