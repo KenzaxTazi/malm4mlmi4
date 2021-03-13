@@ -52,11 +52,6 @@ class MetaModel():
                 #print('why is this not changing? ', steps * self.update_lr * grad )
                 new_param = param - steps * self.update_lr * grad  # gradient descent
             
-            if name == 'conv2.weight':
-                print('Old param ', param)
-                print('New param ', new_param)
-                print('Grad', grad)
-            
             updated_params[name] = new_param
 
         return updated_params
@@ -116,7 +111,7 @@ class MetaModel():
                 if train: 
                     with torch.autograd.set_detect_anomaly(True):              
                         self.optimizer.zero_grad()
-                        total_loss.backward()
+                        total_loss.backward(retain_graph=True)
                         for param in self.optimizer.param_groups[0]['params']:
                             # Bit of regularisation innit
                             nn.utils.clip_grad_value_(param, 10)
