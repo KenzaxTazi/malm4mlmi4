@@ -34,7 +34,7 @@ def train_test_splitting():
 
     # Data splitting 
     np.random.shuffle(char_list)
-    training_char = char_list[0:1200]  # [0:1200]
+    training_char = char_list[0:1200]  # [0:1200]   
     validation_char = char_list [1200:1250]  # [1200:1250]
     test_char = char_list[1250:-1]  # [1250:-1]
 
@@ -56,7 +56,7 @@ def augment(char_list):
     return augm_list
 
 
-def load_data(batch_size, K, N, char_list, training_set=False):
+def load_data(batch_size, K, N, char_list):
     """ 
     Load images, augment and create onehot label. Returns:
         xs_support = [T x N x K x C x H x W]
@@ -79,17 +79,14 @@ def load_data(batch_size, K, N, char_list, training_set=False):
 
     ys_support = []
     xs_support = []
-    if training_set == True:
-        xs_query = []
-        ys_query = []
+    xs_query = []
+    ys_query = []
 
     for task in task_list:
         x_task_support = []
         y_task_support = []
-
-        if training_set == True:
-            x_task_query = []
-            y_task_query = []
+        x_task_query = []
+        y_task_query = []
 
         for n in range(N):
             x_instances= []
@@ -107,8 +104,6 @@ def load_data(batch_size, K, N, char_list, training_set=False):
                 x_instances.append(reshaped_image)
                 
                 # label
-                filename = os.path.basename(f)
-                index, _ = filename.split(sep='_')
                 label = np.zeros(N)
                 label[n] = 1
                 y_instances.append(label)
@@ -118,27 +113,20 @@ def load_data(batch_size, K, N, char_list, training_set=False):
             y_task_support.append(y_support)
             x_task_support.append(x_support)
 
-            if training_set == True:
-                x_query = x_instances[K:]
-                y_query = y_instances[K:]
-                y_task_query.append(y_query)
-                x_task_query.append(x_query)
+            x_query = x_instances[K:]
+            y_query = y_instances[K:]
+            y_task_query.append(y_query)
+            x_task_query.append(x_query)
 
         ys_support.append(y_task_support)
         xs_support.append(x_task_support)
-
-        if training_set == True:  
-            ys_query.append(y_task_query)
-            xs_query.append(x_task_query)  
+        ys_query.append(y_task_query)
+        xs_query.append(x_task_query)  
 
     xs_tensor, ys_tensor = shuffle_and_shape(xs_support, ys_support, batch_size)
+    xs_tensor_q, ys_tensor_q = shuffle_and_shape(xs_query, ys_query, batch_size)
 
-    if training_set == True:
-        xs_tensor_q, ys_tensor_q = shuffle_and_shape(xs_query, ys_query, batch_size)
-        return xs_tensor, ys_tensor, xs_tensor_q, ys_tensor_q
-    
-    else:
-        return xs_tensor, ys_tensor
+    return [xs_tensor, ys_tensor, xs_tensor_q, ys_tensor_q]
 
 
 def shuffle_and_shape(xs, ys, batch_size):
@@ -158,8 +146,13 @@ def shuffle_and_shape(xs, ys, batch_size):
     # Reshape
     x_shp = xs_tensor.shape
     y_shp = ys_tensor.shape
-    xs_batched = torch.reshape(xs_tensor, (-1, batch_size, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
-    ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-3]*y_shp[-2], y_shp[-1]))
+
+    if batch_size == None:
+        xs_batched = torch.reshape(xs_tensor, (-1, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
+        ys_batched = torch.reshape(ys_tensor, (-1, y_shp[-3]*y_shp[-2], y_shp[-1]))
+    else:
+        xs_batched = torch.reshape(xs_tensor, (-1, batch_size, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
+        ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-3]*y_shp[-2], y_shp[-1]))
 
     return xs_batched, ys_batched
 
@@ -191,10 +184,10 @@ def dataprep(batch_size, K, N):
 
     training_char, validation_char, test_char = train_test_splitting()
 
-    xtrain_support,  ytrain_support, xtrain_query, ytrain_query = load_data(batch_size, K, N, training_char, training_set=True)
-    #xval, yval = load_data(batch_size, K, N, validation_char)
-    #xtest, ytest = load_data(batch_size, K, N, test_char)
+    training_set = load_data(batch_size, K, N, training_char)
+    validation_set = load_data(None, K, N, validation_char)
+    #test_set = load_data(batch_size, K, N, test_char)
 
-    return xtrain_support, ytrain_support, xtrain_query, ytrain_query #xval, yval, xtest, ytest
+    return training_set, validation_set
 
 
