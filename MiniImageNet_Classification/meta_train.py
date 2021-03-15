@@ -120,7 +120,6 @@ if __name__ == "__main__":
     # Define training hyperparams
     lr = 0.001
     epochs = 50
-    sch = 0.98
 
     optimizer = torch.optim.SGD(meta_model.parameters(), lr=lr, momentum = 0.9, nesterov=True)
 
@@ -131,7 +130,6 @@ if __name__ == "__main__":
         # train for one epoch
         print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
         train(train_dl, maml_trainer, epoch, device, lr)
-        scheduler.step()
 
         # Evaluate on valdation set
         validate(val_dl, maml_trainer, device, lr)
