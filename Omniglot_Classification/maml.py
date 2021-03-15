@@ -57,7 +57,7 @@ class MetaModel():
         return updated_params
 
 
-    def meta_learn(self, x_supports, y_supports, x_queries, y_queries, epochs=1, train=True):
+    def train(self, x_supports, y_supports, x_queries, y_queries, epochs=1):
         '''
         Perform single outer loop forward and backward pass of MAML algorithm
 
@@ -86,12 +86,8 @@ class MetaModel():
                 accuracy = AverageMeter()
 
                 for task in range(x_supports.size(1)):
-
-                    # Perform inner loop training per task using support sets
-                    if train == True:
-                        updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
-                    else:
-                        updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=3)
+                    # Perform inner loop training per task using support set
+                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=3)
 
                     # Collect logit predictions for query sets, using updated params for specific task
                     logits = self.classifier(x_queries[batch, task], updated_params)
@@ -99,31 +95,78 @@ class MetaModel():
                     # Calculate query task losses
                     y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
                     curr_loss = F.cross_entropy(logits, y_queries_indices)
-                    #print('curr_loss: ', curr_loss)
                     total_loss = total_loss + curr_loss
                     
                     # Determine accuracy
                     acc = accuracy_topk(logits, y_queries_indices)
-                    
                     accuracy.update(acc.item(), logits.size(0))
 
-                #print('total_loss is: {} for batch number {}'.format(total_loss, batch))    
-
-            # Backward pass to update meta-model parameters for each batch 
-                if train: 
-                    with torch.autograd.set_detect_anomaly(True):              
-                        self.optimizer.zero_grad()
-                        total_loss.backward()
-                        for param in self.optimizer.param_groups[0]['params']:
-                            # Bit of regularisation innit
-                            nn.utils.clip_grad_value_(param, 10)
-                        self.optimizer.step()
-                        #self.zero_grad()
+                # Backward pass to update meta-model parameters for each batch 
+                with torch.autograd.set_detect_anomaly(True):              
+                    self.optimizer.zero_grad()
+                    total_loss.backward()
+                    for param in self.optimizer.param_groups[0]['params']:
+                        nn.utils.clip_grad_value_(param, 10)
+                    self.optimizer.step()
+                    #self.zero_grad()
 
                 # Return training accuracy and loss
                 loss = total_loss.item()
                 acc = accuracy.avg
-                print('accuracy: ', acc)
+                
+            print('accuracy: ', acc)
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
+
+    def evaluate(self, x_supports, y_supports, x_queries, y_queries)
+        '''
+        Perform single outer loop forward
+
+        Structure:
+        Support sets used for inner loop training
+        Query sets used for outer loop training
+
+        x_supports = [T x K_{support}*N x C x H x W], for inner loop training
+        y_supports = [T x K_{support}*N], for inner loop training
+        x_queries = [T x K_{query}*N x C x H x W], for outer loop update
+        y_queries = [T x K_{query}*N], for outer loop update
+
+        T: Number of tasks -> sometimes called episodes
+        K: K-shot learning
+        N: N-way i.e. number of classes for task
+        C: Channels
+        H: Image Height
+        W: Image Width
+        '''
+
+        for batch in range(x_supports.size(0)):
+
+            total_loss = torch.zeros(1)
+            accuracy = AverageMeter()
+
+            for task in range(x_supports.size(1)):
+                # Perform inner loop training per task using support set
+                updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
+
+                # Collect logit predictions for query sets, using updated params for specific task
+                logits = self.classifier(x_queries[batch, task], updated_params)
+            
+                # Calculate query task losses
+                y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
+                curr_loss = F.cross_entropy(logits, y_queries_indices)
+                total_loss = total_loss + curr_loss
+                
+                # Determine accuracy
+                acc = accuracy_topk(logits, y_queries_indices)
+                accuracy.update(acc.item(), logits.size(0))
+
+            # Return training accuracy and loss
+            loss = total_loss.item()
+            acc = accuracy.avg
+            print('accuracy: ', acc)
+
+        print('Final loss :', loss, 'Final acc :', acc)
+        return loss, acc
+
+
