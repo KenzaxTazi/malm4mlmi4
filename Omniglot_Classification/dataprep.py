@@ -35,7 +35,7 @@ def train_test_splitting():
     # Data splitting 
     np.random.shuffle(char_list)
     training_char = char_list[0:1200]  # [0:1200]   
-    validation_char = char_list [100:1250]  # [1200:1250]
+    validation_char = char_list [1200:1250]  # [1200:1250]
     test_char = char_list[1250:-1]  # [1250:-1]
 
     return  training_char, validation_char, test_char
