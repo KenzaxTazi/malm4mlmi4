@@ -140,31 +140,29 @@ class MetaModel():
         W: Image Width
         '''
 
-        for batch in range(x_supports.size(0)):
+        total_loss = torch.zeros(1)
+        accuracy = AverageMeter()
 
-            total_loss = torch.zeros(1)
-            accuracy = AverageMeter()
+        for task in range(x_supports.size(1)):
+            # Perform inner loop training per task using support set
+            updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
 
-            for task in range(x_supports.size(1)):
-                # Perform inner loop training per task using support set
-                updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
-
-                # Collect logit predictions for query sets, using updated params for specific task
-                logits = self.classifier(x_queries[batch, task], updated_params)
+            # Collect logit predictions for query sets, using updated params for specific task
+            logits = self.classifier(x_queries[batch, task], updated_params)
+        
+            # Calculate query task losses
+            y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
+            curr_loss = F.cross_entropy(logits, y_queries_indices)
+            total_loss = total_loss + curr_loss
             
-                # Calculate query task losses
-                y_queries_indices = torch.argmax(y_queries[batch, task], dim=1)
-                curr_loss = F.cross_entropy(logits, y_queries_indices)
-                total_loss = total_loss + curr_loss
-                
-                # Determine accuracy
-                acc = accuracy_topk(logits, y_queries_indices)
-                accuracy.update(acc.item(), logits.size(0))
+            # Determine accuracy
+            acc = accuracy_topk(logits, y_queries_indices)
+            accuracy.update(acc.item(), logits.size(0))
 
-            # Return training accuracy and loss
-            loss = total_loss.item()
-            acc = accuracy.avg
-            print('accuracy: ', acc)
+        # Return training accuracy and loss
+        loss = total_loss.item()
+        acc = accuracy.avg
+        print('accuracy: ', acc)
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
