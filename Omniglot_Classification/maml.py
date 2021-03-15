@@ -78,12 +78,13 @@ class MetaModel():
         W: Image Width
         '''
   
-        total_loss = torch.zeros(1)
-        accuracy = AverageMeter()
-
         for e in range(epochs):
-            print(e)
-            for batch in range(x_supports.size(0)):
+            print('epoch:', e)
+
+            for batch in range(x_supports.size(0)):    
+                total_loss = torch.zeros(1)
+                accuracy = AverageMeter()
+
                 for task in range(x_supports.size(1)):
 
                     # Perform inner loop training per task using support sets
@@ -112,17 +113,17 @@ class MetaModel():
                 if train: 
                     with torch.autograd.set_detect_anomaly(True):              
                         self.optimizer.zero_grad()
-                        total_loss.backward(retain_graph=True)
+                        total_loss.backward()
                         for param in self.optimizer.param_groups[0]['params']:
                             # Bit of regularisation innit
                             nn.utils.clip_grad_value_(param, 10)
                         self.optimizer.step()
                         #self.zero_grad()
 
-            # Return training accuracy and loss
-            loss = total_loss.item()
-            acc = accuracy.avg
-            print('accuracy: ', acc)
+                # Return training accuracy and loss
+                loss = total_loss.item()
+                acc = accuracy.avg
+                print('accuracy: ', acc)
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
