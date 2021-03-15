@@ -104,8 +104,6 @@ def load_data(batch_size, K, N, char_list):
                 x_instances.append(reshaped_image)
                 
                 # label
-                filename = os.path.basename(f)
-                index, _ = filename.split(sep='_')
                 label = np.zeros(N)
                 label[n] = 1
                 y_instances.append(label)
