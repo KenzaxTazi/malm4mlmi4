@@ -113,13 +113,13 @@ class MetaModel():
                 # Return training accuracy and loss
                 loss = total_loss.item()
                 acc = accuracy.avg
-                
+
             print('accuracy: ', acc)
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
 
-    def evaluate(self, x_supports, y_supports, x_queries, y_queries)
+    def evaluate(self, x_supports, y_supports, x_queries, y_queries):
         '''
         Perform single outer loop forward
 
