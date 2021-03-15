@@ -148,11 +148,11 @@ def shuffle_and_shape(xs, ys, batch_size):
     y_shp = ys_tensor.shape
 
     if batch_size == None:
-        xs_batched = torch.reshape(xs_tensor, (-1, batch_size, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
-        ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-3]*y_shp[-2], y_shp[-1]))
-    else:
         xs_batched = torch.reshape(xs_tensor, (-1, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
         ys_batched = torch.reshape(ys_tensor, (-1, y_shp[-3]*y_shp[-2], y_shp[-1]))
+    else:
+        xs_batched = torch.reshape(xs_tensor, (-1, batch_size, x_shp[-5]*x_shp[-4], *x_shp[-3:]))
+        ys_batched = torch.reshape(ys_tensor, (-1, batch_size, y_shp[-3]*y_shp[-2], y_shp[-1]))
 
     return xs_batched, ys_batched
 
