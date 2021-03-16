@@ -29,7 +29,7 @@ if __name__ == '__main__':
     lr = 0.4
     meta_batch_size = 32
     conv = True
-    epochs = 62
+    epochs = 150
 
     # Import data
     training_set, validation_set = dp.dataprep(meta_batch_size, K, N)
