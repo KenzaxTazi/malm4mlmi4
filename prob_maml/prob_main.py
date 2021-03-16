@@ -34,8 +34,8 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     bias = 20
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = ProbModelMLPSinusoid().to(device)
-    var_model = ProbModelMLPSinusoid(init_value=np.log(0.02 ** 2))
+    model = ProbModelMLPSinusoid(bias=20).to(device)
+    var_model = ProbModelMLPSinusoid(bias=20, init_value=np.log(0.02 ** 2))
     optimizer = torch.optim.Adam(list(model.parameters()) + list(var_model.parameters()), lr=.01)
 
     meta_model = ProbMAML(model, optimizer, var_model)

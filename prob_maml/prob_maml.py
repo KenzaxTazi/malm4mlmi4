@@ -53,12 +53,12 @@ class ProbMAML():
 
             # sample_params = {}
             # q_means = {}
-            # q_vars = {}
-            # for name, param in mean_updated_params:
-            #     dist_var = np.sqrt(noise_q) * torch.ones(dist_mean.shape)
+            # q_stds = {}
+            # for name, param in mean_updated_params.items():
+            #     dist_std = np.sqrt(noise_q) * torch.ones(param.shape)
             #     q_means[name] = param
-            #     q_vars[name] = dist_var
-            #     sample_params[name] = Normal(loc=param, scale=dist_var).sample().clone().detach().requires_grad_(True)
+            #     q_stds[name] = dist_std
+            #     sample_params[name] = Normal(loc=param, scale=dist_std).sample().clone().detach().requires_grad_(True)
             
 
             # Sample weights from q_dist 

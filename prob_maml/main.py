@@ -34,7 +34,7 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     bias = 20
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = ModelMLPSinusoid().to(device)
+    model = ModelMLPSinusoid(bias=bias).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=.01)
     meta_model = MAML_trainer(model, optimizer)
     alpha=0.001
@@ -89,7 +89,7 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     alpha=0.001
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    trained_regressor = ModelMLPSinusoid().to(device)
+    trained_regressor = ModelMLPSinusoid(bias=bias).to(device)
     trained_regressor.load_state_dict(torch.load(os.path.join(output_directory, f"{datasource}_model.pt")))
     optimizer = torch.optim.Adam(trained_regressor.parameters(), lr=.01)
     trained_meta_model = MAML_trainer(trained_regressor, optimizer)
@@ -132,4 +132,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-test(datasource='sinusoid_linear', output_directory='prob_maml/results/bias/')
+train(datasource='sinusoid_linear', output_directory='prob_maml/results/bias/test2')

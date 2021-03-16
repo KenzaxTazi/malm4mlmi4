@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn 
 
 from collections import OrderedDict
@@ -24,9 +25,10 @@ class MetaMLPModel(MetaModule):
         self.in_features = in_features
         self.out_features = out_features
         self.hidden_sizes = hidden_sizes
+        self.bias = bias
 
-        if bias is not None:
-            self.in_features = in_features + bias
+        if self.bias is not None:
+            self.in_features = in_features + self.bias
 
         layer_sizes = [self.in_features] + self.hidden_sizes
         self.features = MetaSequential(OrderedDict([('layer{0}'.format(i+1),
@@ -38,6 +40,10 @@ class MetaMLPModel(MetaModule):
         print(self)
 
     def forward(self, inputs, params=None):
+        if self.bias is not None:
+            target = torch.zeros(inputs.shape[0], inputs.shape[1] + self.bias)
+            target[:, :inputs.shape[1]] = inputs
+            inputs = target
         features = self.features(inputs, params=self.get_subdict(params, 'features'))
         logits = self.regressor(features, params=self.get_subdict(params, 'regressor'))
         return logits
