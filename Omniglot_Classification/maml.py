@@ -105,8 +105,10 @@ class MetaModel():
                 with torch.autograd.set_detect_anomaly(True):              
                     self.optimizer.zero_grad()
                     total_loss.backward()
+                    '''
                     for param in self.optimizer.param_groups[0]['params']:
                         nn.utils.clip_grad_value_(param, 10)
+                    '''
                     self.optimizer.step()
                     #self.zero_grad()
 
