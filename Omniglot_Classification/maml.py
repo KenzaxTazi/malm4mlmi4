@@ -105,8 +105,10 @@ class MetaModel():
                 with torch.autograd.set_detect_anomaly(True):              
                     self.optimizer.zero_grad()
                     total_loss.backward()
+                    '''
                     for param in self.optimizer.param_groups[0]['params']:
                         nn.utils.clip_grad_value_(param, 10)
+                    '''
                     self.optimizer.step()
                     #self.zero_grad()
 
@@ -158,11 +160,11 @@ class MetaModel():
             # Determine accuracy
             acc = accuracy_topk(logits, y_queries_indices)
             accuracy.update(acc.item(), logits.size(0))
+            print('accuracy: ', acc)
 
         # Return training accuracy and loss
         loss = total_loss.item()
         acc = accuracy.avg
-        print('accuracy: ', acc)
 
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
