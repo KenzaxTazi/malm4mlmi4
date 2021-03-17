@@ -39,10 +39,10 @@ class ProbMetaMLPModel(MetaModule):
         
         self.features = MetaSequential(OrderedDict([('layer{0}'.format(i+1),
                         MetaSequential(OrderedDict([
-                            ('linear', MetaLinear(hidden_size, layer_sizes[i+1], bias=False)),
+                            ('linear', MetaLinear(hidden_size, layer_sizes[i+1], bias=True)),
                             ('relu', nn.ReLU())
                         ]))) for (i, hidden_size) in enumerate(layer_sizes[:-1])]))
-        self.regressor = MetaLinear(hidden_sizes[-1], out_features, bias=False)
+        self.regressor = MetaLinear(hidden_sizes[-1], out_features, bias=True)
 
         if init_value is not None:
             self.features.apply(init_weights)

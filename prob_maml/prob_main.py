@@ -31,11 +31,11 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     metatrain_iterations = 70000 # 70000 in paper
     stochastic = True
     num_classes = 1 # 2 for 2dclass
-    bias = 20
+    bias = 0
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = ProbModelMLPSinusoid(bias=20).to(device)
-    var_model = ProbModelMLPSinusoid(bias=20, init_value=np.log(0.02 ** 2))
+    model = ProbModelMLPSinusoid(bias=bias).to(device)
+    var_model = ProbModelMLPSinusoid(bias=bias, init_value=np.log(0.02 ** 2))
     optimizer = torch.optim.Adam(list(model.parameters()) + list(var_model.parameters()), lr=.01)
 
     meta_model = ProbMAML(model, optimizer, var_model)
@@ -79,22 +79,23 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
 
     plt.savefig(os.path.join(output_directory, f"{datasource}_losses.png"), dpi=300)
     torch.save(meta_model.regressor.state_dict(), os.path.join(output_directory, f"{datasource}_model.pt"))
+    torch.save(meta_model.regressor_variances.state_dict(), os.path.join(output_directory, f"{datasource}_model_variances.pt"))
 
 def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     # meta_batch_size = 25
-    bias = 20
+    bias = 0
     num_test_curves = 10
     num_samples_per_class = 105
 
-    update_batch_size = 10 # 10 for 2dclass
+    update_batch_size = 5 # 10 for 2dclass
     num_classes = 1 # 2 for 2dclass
     alpha=0.001
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    trained_regressor = ProbModelMLPSinusoid().to(device)
+    trained_regressor = ProbModelMLPSinusoid(bias=bias).to(device)
     trained_regressor.load_state_dict(torch.load(os.path.join(output_directory, f"{datasource}_model.pt")))
     optimizer = torch.optim.Adam(trained_regressor.parameters(), lr=.01)
-    trained_meta_model = ProbMAML(trained_regressor, optimizer)
+    trained_meta_model = ProbMAML(trained_regressor, optimizer, None)
 
     data_generator = DataGenerator(num_samples_per_class, num_test_curves, datasource=datasource, update_batch_size=update_batch_size, num_classes=num_classes)
     batch_x, batch_y, amp, phase = data_generator.generate(train=True, input_idx=update_batch_size)
@@ -108,7 +109,7 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     sns.set()
     for idx, ax in enumerate(axes.flatten()):
         test_model = copy.deepcopy(trained_meta_model)
-        updated_params = test_model._inner_loop_train(inputa[idx], labela[idx], alpha)
+        updated_params = test_model._inner_loop_test(inputa[idx], labela[idx], alpha)
         with torch.no_grad():
             prior_query_predictions = test_model.regressor(inputb[idx], OrderedDict(test_model.regressor.named_parameters()))
             prior_query_loss = F.mse_loss(prior_query_predictions, labelb[idx])
@@ -134,4 +135,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-train(datasource='sinusoid_linear', output_directory='prob_maml/results/prob/test/')
+train(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias/')

@@ -192,7 +192,42 @@ class ProbMAML():
         # Return training loss
         return total_loss, total_prior_loss
     
-    
+    def _inner_loop_test(self, x_support, y_support, alpha):
+        '''
+        Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
+
+        x_support : tensor [K, 1]
+            Support set inputs, where K is the number of sampled input-output pairs from task.  
+
+        y_support : tensor [K, 1]
+            Support set outputs, where K is the number of sampled input-output pairs from task. 
+        
+        alpha : float
+            Inner loop learning rate
+
+
+        Return updated model parameters. 
+        '''
+
+        # Forward pass using support sets
+        with torch.enable_grad():
+            predicted = self.regressor(x_support, OrderedDict(self.regressor.named_parameters()))
+            loss = F.mse_loss(predicted, y_support)
+            self.optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+
+            updated_params = self.regressor.state_dict()
+
+            # Manual update
+            for (name, param) in self.regressor.named_parameters():
+                grad = param.grad
+                if grad is None:
+                    new_param = param
+                else:
+                    new_param = param - alpha * grad
+                updated_params[name] = new_param
+        
+        return updated_params
     
     # def kl_divergence_gaussians(p, q):
     #     """Calculate KL divergence between 2 diagonal Gaussian

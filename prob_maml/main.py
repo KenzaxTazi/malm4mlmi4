@@ -28,10 +28,10 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     meta_batch_size = 25
     update_batch_size = 5 # 10 for 2dclass
     pretrain_iterations = 0
-    metatrain_iterations = 70000 # 70000 in paper
+    metatrain_iterations = 30000 # 70000 in paper
     stochastic = True
     num_classes = 1 # 2 for 2dclass
-    bias = 20
+    bias = 0
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = ModelMLPSinusoid(bias=bias).to(device)
@@ -80,7 +80,7 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
 
 def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     # meta_batch_size = 25
-    bias = 20
+    bias = 0
     num_test_curves = 10
     num_samples_per_class = 105
 
@@ -132,4 +132,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-train(datasource='sinusoid_linear', output_directory='prob_maml/results/bias/test2')
+test(datasource='sinusoid_linear', output_directory='prob_maml/results/modelbias/')
