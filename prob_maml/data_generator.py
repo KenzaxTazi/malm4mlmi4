@@ -9,7 +9,7 @@ class DataGenerator(object):
     Data Generator capable of generating batches of sinusoid or Omniglot data.
     A "class" is considered a class of omniglot digits or a particular sinusoid function.
     """
-    def __init__(self, num_samples_per_class, batch_size, datasource, update_batch_size, num_classes=1, config={}):
+    def __init__(self, num_samples_per_class, batch_size, datasource, num_classes=1, config={}):
         """
         Args:
             num_samples_per_class: num samples to generate per class in one batch
@@ -18,7 +18,6 @@ class DataGenerator(object):
         self.batch_size = batch_size
         self.num_samples_per_class = num_samples_per_class
         self.num_classes = num_classes  # by default 1 (only relevant for classification problems)
-        self.update_batch_size = update_batch_size
 
         if datasource == 'sinusoid':
             self.generate = self.generate_sinusoid_batch
@@ -114,25 +113,25 @@ class DataGenerator(object):
                     outputs[task,:,0] = (inputs[task,:,0] * slope[task] + bias[task]) < inputs[task,:,1]
         return inputs, outputs, slope, bias
 
-    def generate_2d_circle_classification(self, train=True, input_idx=None):
-        centers = np.random.uniform(self.center_range[0], self.center_range[1], [self.batch_size,2])
-        diameters = np.random.uniform(self.diameter_range[0], self.diameter_range[1], [self.batch_size])
-        inputs = np.zeros([self.batch_size, self.num_samples_per_class, self.dim_input])
-        outputs = np.zeros([self.batch_size, self.num_samples_per_class, self.dim_output], dtype=np.int32)
-        num_inner_obj = self.update_batch_size # all positive
-        num_outer_obj = self.num_samples_per_class - num_inner_obj # both neg and pos
-        inputs[:,num_inner_obj:, :] = np.random.uniform(self.feat_range[0], self.feat_range[1], [self.batch_size, num_outer_obj, self.dim_input])
-        for task in range(self.batch_size):
-            center, diameter = centers[task], diameters[task]
-            for i in range(num_inner_obj):
-                r = np.random.uniform(0, diameter/2)
-                theta = np.random.uniform(0,2*np.pi)
-                inputs[task,i,0] = r*np.cos(theta) + center[0]
-                inputs[task,i,1] = r*np.sin(theta) + center[1]
-            outputs[task, :num_inner_obj, :] = 1
-            for i in range(num_outer_obj):
-                idx = num_inner_obj + i
-                outputs[task,idx,0] = np.sum((inputs[task,idx,:] - center)**2) < (diameter/2.0)**2
+    # def generate_2d_circle_classification(self, train=True, input_idx=None):
+    #     centers = np.random.uniform(self.center_range[0], self.center_range[1], [self.batch_size,2])
+    #     diameters = np.random.uniform(self.diameter_range[0], self.diameter_range[1], [self.batch_size])
+    #     inputs = np.zeros([self.batch_size, self.num_samples_per_class, self.dim_input])
+    #     outputs = np.zeros([self.batch_size, self.num_samples_per_class, self.dim_output], dtype=np.int32)
+    #     num_inner_obj = self.update_batch_size # all positive
+    #     num_outer_obj = self.num_samples_per_class - num_inner_obj # both neg and pos
+    #     inputs[:,num_inner_obj:, :] = np.random.uniform(self.feat_range[0], self.feat_range[1], [self.batch_size, num_outer_obj, self.dim_input])
+    #     for task in range(self.batch_size):
+    #         center, diameter = centers[task], diameters[task]
+    #         for i in range(num_inner_obj):
+    #             r = np.random.uniform(0, diameter/2)
+    #             theta = np.random.uniform(0,2*np.pi)
+    #             inputs[task,i,0] = r*np.cos(theta) + center[0]
+    #             inputs[task,i,1] = r*np.sin(theta) + center[1]
+    #         outputs[task, :num_inner_obj, :] = 1
+    #         for i in range(num_outer_obj):
+    #             idx = num_inner_obj + i
+    #             outputs[task,idx,0] = np.sum((inputs[task,idx,:] - center)**2) < (diameter/2.0)**2
 
         #if input_idx is not None:
         #    lingrid = np.linspace(self.feat_range[0], self.feat_range[1],

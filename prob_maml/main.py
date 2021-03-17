@@ -27,6 +27,8 @@ Usage Instructions:
 def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     meta_batch_size = 25
     update_batch_size = 5 # 10 for 2dclass
+    num_samples_per_class = 55
+
     pretrain_iterations = 0
     metatrain_iterations = 30000 # 70000 in paper
     stochastic = True
@@ -40,7 +42,7 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     alpha=0.001
     num_inner_updates = 5
 
-    data_generator = DataGenerator(update_batch_size + max(50, update_batch_size), meta_batch_size, datasource=datasource, update_batch_size=update_batch_size, num_classes=num_classes)
+    data_generator = DataGenerator(num_samples_per_class, meta_batch_size, datasource=datasource, num_classes=num_classes)
     num_classes = data_generator.num_classes
 
     losses = []
@@ -50,7 +52,6 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
 
     for idx in range(pretrain_iterations + metatrain_iterations):
         batch_x, batch_y, amp, phase = data_generator.generate()
-
         # A for support, B for query
 
         inputa = torch.tensor(batch_x[:, :num_classes * update_batch_size, :].astype(np.float32)).to(device) # shape: meta_batch_size, update_batch_size, 
@@ -82,19 +83,20 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     # meta_batch_size = 25
     bias = 0
     num_test_curves = 10
-    num_samples_per_class = 105
+    num_samples_per_class = 55
+    num_inner_updates = 5
 
-    update_batch_size = 10 # 10 for 2dclass
+    update_batch_size = 5 # 10 for 2dclass
     num_classes = 1 # 2 for 2dclass
     alpha=0.001
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     trained_regressor = ModelMLPSinusoid(bias=bias).to(device)
     trained_regressor.load_state_dict(torch.load(os.path.join(output_directory, f"{datasource}_model.pt")))
-    optimizer = torch.optim.Adam(trained_regressor.parameters(), lr=.01)
+    optimizer = torch.optim.Adam(trained_regressor.parameters(), lr=0.0)
     trained_meta_model = MAML_trainer(trained_regressor, optimizer)
 
-    data_generator = DataGenerator(num_samples_per_class, num_test_curves, datasource=datasource, update_batch_size=update_batch_size, num_classes=num_classes)
+    data_generator = DataGenerator(num_samples_per_class, num_test_curves, datasource=datasource, num_classes=num_classes)
     batch_x, batch_y, amp, phase = data_generator.generate(train=True, input_idx=update_batch_size)
 
     inputa = torch.tensor(batch_x[:, :update_batch_size, :].astype(np.float32)).to(device)
@@ -102,17 +104,21 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     labela = torch.tensor(batch_y[:, :update_batch_size, :].astype(np.float32)).to(device)
     labelb = torch.tensor(batch_y[:,update_batch_size:, :].astype(np.float32)).to(device)
 
+
     fig, axes = plt.subplots(2, 5, figsize=(10, 5))
     sns.set()
+
     for idx, ax in enumerate(axes.flatten()):
         test_model = copy.deepcopy(trained_meta_model)
         updated_params = test_model._inner_loop_train(inputa[idx], labela[idx], alpha)
+
         with torch.no_grad():
             prior_query_predictions = test_model.regressor(inputb[idx], OrderedDict(test_model.regressor.named_parameters()))
             prior_query_loss = F.mse_loss(prior_query_predictions, labelb[idx])
 
             updated_query_predictions = test_model.regressor(inputb[idx], updated_params)
             updated_query_loss = F.mse_loss(updated_query_predictions, labelb[idx])
+            print(f"Prior loss: {prior_query_loss} | Adapted loss: {updated_query_loss}")
 
         xs = np.arange(-5.0, 5.0, 0.01)
         if amp[idx] > 50:
@@ -132,4 +138,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-test(datasource='sinusoid_linear', output_directory='prob_maml/results/modelbias/')
+train(datasource='sinusoid_linear', output_directory='prob_maml/results/testing/')

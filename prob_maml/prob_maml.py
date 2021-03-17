@@ -1,5 +1,6 @@
 
 from collections import OrderedDict
+import copy
 
 import torch
 import torch.nn.functional as F
@@ -16,7 +17,7 @@ class ProbMAML():
         self.regressor_variances = regressor_variances
         self.optimizer = optimizer
         
-    def _inner_loop_train(self, x_train, y_train, x_test, y_test, alpha=0.001, gamma_q=0.1, noise_q=0.1):
+    def _inner_loop_train(self, x_train, y_train, x_test, y_test, alpha=0.001, init_params=None, gamma_q=0.01, noise_q=0.01):
         '''
         Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
@@ -35,6 +36,10 @@ class ProbMAML():
 
         # Forward pass using support sets
         with torch.enable_grad():
+            # How tf does an inner gradient step work with this??
+            # if init_params is None:
+            #     init_params =  OrderedDict(self.regressor.named_parameters())
+            # predicted = self.regressor(x_test, init_params)
             predicted = self.regressor(x_test, OrderedDict(self.regressor.named_parameters()))
             loss = F.mse_loss(predicted, y_test)
             self.optimizer.zero_grad()
@@ -42,7 +47,7 @@ class ProbMAML():
 
             # mean_updated_params = self.regressor.state_dict()
 
-            # # # Manual update
+            # # Manual update
             # for (name, param) in self.regressor.named_parameters():
             #     grad = param.grad
             #     if grad is None:
@@ -54,17 +59,18 @@ class ProbMAML():
             # sample_params = {}
             # q_means = {}
             # q_stds = {}
-            # for name, param in mean_updated_params.items():
+            # for name, dist_mean in mean_updated_params.items():
             #     dist_std = np.sqrt(noise_q) * torch.ones(param.shape)
-            #     q_means[name] = param
+            #     q_means[name] = dist_mean
             #     q_stds[name] = dist_std
-            #     sample_params[name] = Normal(loc=param, scale=dist_std).sample().clone().detach().requires_grad_(True)
+            #     sample_params[name] = Normal(loc=dist_mean, scale=dist_std).sample().requires_grad_(True)
             
 
             # Sample weights from q_dist 
             sample_params = {}
             q_means = {}
             q_stds = {}
+
             for name, param in self.regressor.named_parameters():
                 dist_mean = param - (gamma_q * param.grad)
                 dist_std = np.sqrt(noise_q) * torch.ones(dist_mean.shape)
@@ -78,7 +84,8 @@ class ProbMAML():
             self.optimizer.zero_grad()
             sample_loss.backward(retain_graph=True)
 
-            updated_params = self.regressor.state_dict()
+            # updated_params = self.regressor.state_dict()
+            updated_params = copy.deepcopy(sample_params)
 
             # Manual update
             for (name, param) in sample_params.items():
@@ -91,7 +98,7 @@ class ProbMAML():
 
         return updated_params, q_means, q_stds
 
-    def outer_loop_train(self, x_trains, y_trains, x_tests, y_tests, device, alpha=0.001, num_inner_updates=5, gamma_p=0.1):
+    def outer_loop_train(self, x_trains, y_trains, x_tests, y_tests, device, alpha=0.001, num_inner_updates=5, gamma_p=0.01):
         '''
         Perform single outer loop forward and backward pass of Model-Agnostic Meta Learning Algorithm (MAML).
 
@@ -126,8 +133,9 @@ class ProbMAML():
 
         # Perform inner loop training per task using support sets
         for task in range(x_trains.size(0)):
-            for update_idx in range(num_inner_updates):
-                updated_params, q_means, q_stds = self._inner_loop_train(x_trains[task], y_trains[task], x_tests[task], y_tests[task], alpha)
+            updated_params = OrderedDict(self.regressor.named_parameters())
+            for _ in range(num_inner_updates):
+                updated_params, q_means, q_stds = self._inner_loop_train(x_trains[task], y_trains[task], x_tests[task], y_tests[task], alpha, updated_params)
 
             # Collect predictions for query sets, using model prior params for specific task
             prior_predictions = self.regressor(x_tests[task], OrderedDict(self.regressor.named_parameters()))
