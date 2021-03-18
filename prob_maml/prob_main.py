@@ -85,7 +85,6 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     # meta_batch_size = 25
     bias = 0
     num_test_curves = 10
-    num_samples_per_class = 105
     num_samples_per_class = 55
     num_inner_updates = 5
 
@@ -144,4 +143,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-test(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_2/')
+train(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_4/')
