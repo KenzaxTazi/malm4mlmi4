@@ -87,7 +87,7 @@ class MetaModel():
 
                 for task in range(x_supports.size(1)):
                     # Perform inner loop training per task using support set
-                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=3)
+                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
 
                     # Collect logit predictions for query sets, using updated params for specific task
                     logits = self.classifier(x_queries[batch, task], updated_params)
