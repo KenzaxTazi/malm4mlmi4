@@ -96,8 +96,12 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
 
     trained_regressor = ProbModelMLPSinusoid(bias=bias).to(device)
     trained_regressor.load_state_dict(torch.load(os.path.join(output_directory, f"{datasource}_model.pt")))
-    optimizer = torch.optim.Adam(trained_regressor.parameters(), lr=0.0)
-    trained_meta_model = ProbMAML(trained_regressor, optimizer, None)
+
+    trained_var_regressor = ProbModelMLPSinusoid(bias=bias).to(device)
+    trained_var_regressor.load_state_dict(torch.load(os.path.join(output_directory, f"{datasource}_model_variances.pt")))
+    
+    optimizer = torch.optim.Adam(list(trained_regressor.parameters()) + list(trained_var_regressor.parameters()), lr=0.0)
+    trained_meta_model = ProbMAML(trained_regressor, optimizer, trained_var_regressor)
 
     data_generator = DataGenerator(num_samples_per_class, num_test_curves, datasource=datasource, num_classes=num_classes)
     batch_x, batch_y, amp, phase = data_generator.generate(train=True, input_idx=update_batch_size)

@@ -158,7 +158,6 @@ class ProbMAML():
             predictions = self.regressor(x_tests[task], updated_params)
             curr_loss = F.mse_loss(predictions, y_tests[task])
             kl_div = torch.distributions.kl_divergence(q_dist, p_dist).mean()
-
             total_loss = total_loss + curr_loss + kl_div # Summation from Line 11 of Algorithm 1
 
         # Backward pass to update meta-model parameters
@@ -173,14 +172,14 @@ class ProbMAML():
         # Return training loss
         return total_loss, total_prior_loss
     
-    def _inner_loop_test(self, x_support, y_support, alpha):
+    def _inner_loop_test(self, x_train, y_train, alpha, gamma_p=0.001):
         '''
         Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
-        x_support : tensor [K, 1]
+        x_train : tensor [K, 1]
             Support set inputs, where K is the number of sampled input-output pairs from task.  
 
-        y_support : tensor [K, 1]
+        y_train : tensor [K, 1]
             Support set outputs, where K is the number of sampled input-output pairs from task. 
         
         alpha : float
@@ -189,18 +188,36 @@ class ProbMAML():
 
         Return updated model parameters. 
         '''
-
-        # Forward pass using support sets
         with torch.enable_grad():
-            predicted = self.regressor(x_support, OrderedDict(self.regressor.named_parameters()))
-            loss = F.mse_loss(predicted, y_support)
+            # Collect predictions for train sets, using model mean prior params for specific task
+            train_prior_predictions = self.regressor(x_train, OrderedDict(self.regressor.named_parameters()))
+
+            # Calculate prior loss and add to task prior losses
+            train_prior_loss = F.mse_loss(train_prior_predictions, y_train) # L(mu_theta, D^tr)
+
+            self.optimizer.zero_grad()
+            train_prior_loss.backward(retain_graph=True)
+
+            sample_params = self.regressor.state_dict()
+            for name, param in self.regressor.named_parameters():
+                grad = param.grad
+                if grad is None:
+                    dist_mean = param
+                else:
+                    dist_mean = param - gamma_p * grad
+                dist_var = self.regressor_variances.state_dict()[name]
+                dist_std = torch.sqrt(torch.exp(dist_var))
+                sample_params[name] = Normal(loc=dist_mean, scale=dist_std).sample().requires_grad_(True)
+
+            predicted = self.regressor(x_train, sample_params)
+            loss = F.mse_loss(predicted, y_train)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
-            updated_params = self.regressor.state_dict()
+            updated_params = copy.deepcopy(sample_params)
 
             # Manual update
-            for (name, param) in self.regressor.named_parameters():
+            for name, param in sample_params.items():
                 grad = param.grad
                 if grad is None:
                     new_param = param
