@@ -52,7 +52,8 @@ class ProbMAML():
                 dist_std = np.sqrt(dist_var)
                 q_means[name] = dist_mean
                 q_vars[name] = dist_var
-                sample_params[name] = Normal(loc=dist_mean, scale=dist_std).rsample().requires_grad_(True)
+                sample_params[name] = Normal(loc=dist_mean, scale=dist_std).rsample()
+                sample_params[name].retain_grad()
 
             sample_predicted = self.regressor(x_train, OrderedDict(sample_params))
             sample_loss = F.mse_loss(sample_predicted, y_train)
@@ -99,11 +100,11 @@ class ProbMAML():
 
             p_all_means = torch.cat(p_all_means)
             p_all_vars = torch.cat(p_all_vars)
-            # p_all_cov = torch.diag_embed(p_all_vars)
+            # p_all_cov = torch.diag(p_all_vars)
 
             q_all_means = torch.cat(q_all_means)
             q_all_vars = torch.cat(q_all_vars)
-            # q_all_cov = torch.diag_embed(q_all_vars)
+            # q_all_cov = torch.diag(q_all_vars)
 
             # p_dist = torch.distributions.MultivariateNormal(p_all_means, p_all_cov)
             # q_dist = torch.distributions.MultivariateNormal(q_all_means, q_all_cov)
