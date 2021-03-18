@@ -43,7 +43,7 @@ class Classifier(MetaModule):
         '''
 
         if self.conv == True:
-            x = F.relu(self.bn(self.conv1(x, params=self.get_subdict(params, 'conv1')), params=self.get_subdict(params, 'bn'))))
+            x = F.relu(self.bn(self.conv1(x, params=self.get_subdict(params, 'conv1')), params=self.get_subdict(params, 'bn')))
             x = F.relu(self.bn(self.conv2(x, params=self.get_subdict(params, 'conv2')), params=self.get_subdict(params, 'bn')))
             x = F.relu(self.bn(self.conv3(x, params=self.get_subdict(params, 'conv3')), params=self.get_subdict(params, 'bn')))
             x = F.relu(self.bn(self.conv4(x, params=self.get_subdict(params, 'conv4')), params=self.get_subdict(params, 'bn')))
