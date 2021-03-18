@@ -100,14 +100,10 @@ class ProbMAML():
 
             p_all_means = torch.cat(p_all_means)
             p_all_vars = torch.cat(p_all_vars)
-            # p_all_cov = torch.diag(p_all_vars)
 
             q_all_means = torch.cat(q_all_means)
             q_all_vars = torch.cat(q_all_vars)
-            # q_all_cov = torch.diag(q_all_vars)
 
-            # p_dist = torch.distributions.MultivariateNormal(p_all_means, p_all_cov)
-            # q_dist = torch.distributions.MultivariateNormal(q_all_means, q_all_cov)
             p_dist = Normal(loc=p_all_means, scale=np.sqrt(p_all_vars))
             q_dist = Normal(loc=q_all_means, scale=np.sqrt(q_all_vars))
 
@@ -163,7 +159,6 @@ class ProbMAML():
             predictions = self.regressor(x_tests[task], updated_params)
             curr_loss = F.mse_loss(predictions, y_tests[task])
             curr_kl_div = torch.distributions.kl_divergence(q_dist, p_dist).mean()
-
             total_loss = total_loss + curr_loss + (kl_weight * curr_kl_div) # Summation from Line 11 of Algorithm 1
 
         # Backward pass to update meta-model parameters
@@ -213,7 +208,9 @@ class ProbMAML():
                     dist_mean = param - (gamma_p * grad)
                 dist_var = self.regressor_variances.state_dict()[name]
                 dist_std = torch.sqrt(torch.exp(dist_var))
-                sample_params[name] = Normal(loc=dist_mean, scale=dist_std).sample().requires_grad_(True)
+                sample_params[name] = Normal(loc=dist_mean, scale=dist_std).rsample()
+                sample_params[name].retain_grad()
+
 
             predicted = self.regressor(x_train, sample_params)
             loss = F.mse_loss(predicted, y_train)
