@@ -17,7 +17,7 @@ class ProbMAML():
         self.regressor_variances = regressor_variances
         self.optimizer = optimizer
         
-    def _inner_loop_train(self, x_train, y_train, x_test, y_test, alpha=0.001, init_params=None, gamma_q=0.01, noise_q=0.01):
+    def _inner_loop_train(self, x_train, y_train, x_test, y_test, alpha=0.001, init_params=None, gamma_q=0.01, gamma_p=0.01, noise_q=0.01):
         '''
         Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
@@ -36,35 +36,10 @@ class ProbMAML():
 
         # Forward pass using support sets
         with torch.enable_grad():
-            # How tf does an inner gradient step work with this??
-            # if init_params is None:
-            #     init_params =  OrderedDict(self.regressor.named_parameters())
-            # predicted = self.regressor(x_test, init_params)
             predicted = self.regressor(x_test, OrderedDict(self.regressor.named_parameters()))
             loss = F.mse_loss(predicted, y_test)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
-
-            # mean_updated_params = self.regressor.state_dict()
-
-            # # Manual update
-            # for (name, param) in self.regressor.named_parameters():
-            #     grad = param.grad
-            #     if grad is None:
-            #         new_param = param
-            #     else:
-            #         new_param = param - gamma_q * grad
-            #     mean_updated_params[name] = new_param
-
-            # sample_params = {}
-            # q_means = {}
-            # q_stds = {}
-            # for name, dist_mean in mean_updated_params.items():
-            #     dist_std = np.sqrt(noise_q) * torch.ones(param.shape)
-            #     q_means[name] = dist_mean
-            #     q_stds[name] = dist_std
-            #     sample_params[name] = Normal(loc=dist_mean, scale=dist_std).sample().requires_grad_(True)
-            
 
             # Sample weights from q_dist 
             sample_params = {}
@@ -84,7 +59,6 @@ class ProbMAML():
             self.optimizer.zero_grad()
             sample_loss.backward(retain_graph=True)
 
-            # updated_params = self.regressor.state_dict()
             updated_params = copy.deepcopy(sample_params)
 
             # Manual update
@@ -96,9 +70,44 @@ class ProbMAML():
                     new_param = param - alpha * grad
                 updated_params[name] = new_param
 
-        return updated_params, q_means, q_stds
+            # Collect predictions for train sets, using model prior params for specific task
+            train_prior_predictions = self.regressor(x_train, OrderedDict(self.regressor.named_parameters()))
 
-    def outer_loop_train(self, x_trains, y_trains, x_tests, y_tests, device, alpha=0.001, num_inner_updates=5, gamma_p=0.01):
+            # Calculate prior loss and add to task prior losses
+            train_prior_loss = F.mse_loss(train_prior_predictions, y_train) # L(mu_theta, D^tr)
+
+            self.optimizer.zero_grad()
+            train_prior_loss.backward(retain_graph=True)
+
+            # Get p and q dists
+            p_all_means = []
+            p_all_vars = []
+            q_all_means = []
+            q_all_stds = []
+
+            for name, param in self.regressor.named_parameters():
+                p_mean = param - (gamma_p * param.grad)
+                p_var = self.regressor_variances.state_dict()[name]
+
+                p_all_means.append(p_mean.flatten())
+                p_all_vars.append(p_var.flatten())
+
+                q_all_means.append(q_means[name].flatten())
+                q_all_stds.append(q_stds[name].flatten())
+
+            p_all_means = torch.cat(p_all_means)
+            p_all_vars = torch.cat(p_all_vars)
+            p_all_stds = torch.sqrt(torch.exp(p_all_vars))
+
+            q_all_means = torch.cat(q_all_means)
+            q_all_stds = torch.cat(q_all_stds)
+
+            p_dist = Normal(loc=p_all_means, scale=p_all_stds)
+            q_dist = Normal(loc=q_all_means, scale=q_all_stds)
+
+        return updated_params, q_dist, p_dist
+
+    def outer_loop_train(self, x_trains, y_trains, x_tests, y_tests, device, alpha=0.001, num_inner_updates=5):
         '''
         Perform single outer loop forward and backward pass of Model-Agnostic Meta Learning Algorithm (MAML).
 
@@ -130,12 +139,13 @@ class ProbMAML():
         '''
         total_prior_loss = torch.zeros(1).to(device)
         total_loss = torch.zeros(1).to(device)
+        total_kl_div = torch.zeros(1).to(device)
 
         # Perform inner loop training per task using support sets
         for task in range(x_trains.size(0)):
-            updated_params = OrderedDict(self.regressor.named_parameters())
-            for _ in range(num_inner_updates):
-                updated_params, q_means, q_stds = self._inner_loop_train(x_trains[task], y_trains[task], x_tests[task], y_tests[task], alpha, updated_params)
+            # updated_params = OrderedDict(self.regressor.named_parameters())
+            # for _ in range(num_inner_updates):
+            updated_params, q_dist, p_dist = self._inner_loop_train(x_trains[task], y_trains[task], x_tests[task], y_tests[task], alpha)
 
             # Collect predictions for query sets, using model prior params for specific task
             prior_predictions = self.regressor(x_tests[task], OrderedDict(self.regressor.named_parameters()))
@@ -147,46 +157,9 @@ class ProbMAML():
             # Collect predictions for query sets, using model updated params for specific task
             predictions = self.regressor(x_tests[task], updated_params)
             curr_loss = F.mse_loss(predictions, y_tests[task])
+            kl_div = torch.distributions.kl_divergence(q_dist, p_dist).mean()
 
-            total_loss = total_loss + curr_loss
-            
-        # Collect predictions for query sets, using model prior params for specific task
-        final_prior_predictions = self.regressor(x_trains[task], OrderedDict(self.regressor.named_parameters()))
-
-        # Calculate prior loss and add to task prior losses
-        final_prior_loss = F.mse_loss(final_prior_predictions, y_trains[task])
-
-        self.optimizer.zero_grad()
-        final_prior_loss.backward()
-
-        # Calculate p and q KL divergence
-        p_all_means = []
-        p_all_vars = []
-        q_all_means = []
-        q_all_stds = []
-
-        for name, param in self.regressor.named_parameters():
-            p_mean = param - (gamma_p * param.grad)
-            p_var = self.regressor_variances.state_dict()[name]
-
-            p_all_means.append(p_mean.flatten())
-            p_all_vars.append(p_var.flatten())
-
-            q_all_means.append(q_means[name].flatten())
-            q_all_stds.append(q_stds[name].flatten())
-    
-        p_all_means = torch.cat(p_all_means)
-        p_all_vars = torch.cat(p_all_vars)
-        p_all_stds = torch.sqrt(torch.exp(p_all_vars))
-
-        q_all_means = torch.cat(q_all_means)
-        q_all_stds = torch.cat(q_all_stds)
-
-        p_dist = Normal(loc=p_all_means, scale=p_all_stds)
-        q_dist = Normal(loc=q_all_means, scale=q_all_stds)
-        
-        kl_div = torch.distributions.kl_divergence(q_dist, p_dist).mean()
-        total_loss = total_loss + kl_div
+            total_loss = total_loss + curr_loss + kl_div # Summation from Line 11 of Algorithm 1
 
         # Backward pass to update meta-model parameters
         self.optimizer.zero_grad()

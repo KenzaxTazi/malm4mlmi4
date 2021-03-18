@@ -140,4 +140,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-train(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_testing/')
+test(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_2/')
