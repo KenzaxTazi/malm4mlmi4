@@ -17,10 +17,10 @@ class Classifier(MetaModule):
         self.bn = MetaBatchNorm2d(64)
         
         if self.conv == True:
-            self.conv1 = MetaConv2d(1, 64, 3, padding=1) #3x3 convolutions 64 filters
-            self.conv2 = MetaConv2d(64, 64, 3, padding=1)
-            self.conv3 = MetaConv2d(64, 64, 3, padding=1)
-            self.conv4 = MetaConv2d(64, 64, 3, padding=1)
+            self.conv1 = MetaConv2d(1, 64, 3, padding=1, stride=2) #3x3 convolutions 64 filters
+            self.conv2 = MetaConv2d(64, 64, 3, padding=1, stride=2)
+            self.conv3 = MetaConv2d(64, 64, 3, padding=1, stride=2)
+            self.conv4 = MetaConv2d(64, 64, 3, padding=1, stride=2)
             self.fc1 = MetaLinear(64, N)
 
         else:
@@ -43,7 +43,7 @@ class Classifier(MetaModule):
         '''
 
         if self.conv == True:
-            x = F.relu(self.bn(self.conv1(x, params=self.get_subdict(params, 'conv1')), params=self.get_subdict(params, 'bn')))
+            x = F.relu(self.bn(self.conv1(x, params=self.get_subdict(params, 'conv1')), params=self.get_subdict(params, 'bn'))))
             x = F.relu(self.bn(self.conv2(x, params=self.get_subdict(params, 'conv2')), params=self.get_subdict(params, 'bn')))
             x = F.relu(self.bn(self.conv3(x, params=self.get_subdict(params, 'conv3')), params=self.get_subdict(params, 'bn')))
             x = F.relu(self.bn(self.conv4(x, params=self.get_subdict(params, 'conv4')), params=self.get_subdict(params, 'bn')))
