@@ -137,7 +137,7 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
         ax.set_ylim([-9.0,9.0])
         ax.plot(xs, ys, '-',color='gray', linewidth=1, label='ground truth') 
         ax.plot(inputa[idx], labela[idx], '^', color='darkorchid', markeredgewidth=1, markersize=6, markeredgecolor='slategray', label='datapoints')
-        ax.plot(inputb[idx], updated_query_predictions, color='red', linestyle='--', linewidth=1, label='MAML')
+        ax.plot(inputb[idx], prior_query_predictions, color='red', linestyle='--', linewidth=1, label='MAML')
 
     plt.tight_layout()
     plt.legend()

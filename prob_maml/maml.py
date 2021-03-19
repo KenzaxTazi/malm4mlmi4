@@ -35,7 +35,6 @@ class MAML_trainer():
             if init_params is None:
                 init_params =  OrderedDict(self.regressor.named_parameters())
             predicted = self.regressor(x_support, init_params)
-        
             loss = F.mse_loss(predicted, y_support)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
@@ -50,6 +49,7 @@ class MAML_trainer():
                 else:
                     new_param = param - alpha * grad
                 updated_params[name] = new_param
+                updated_params[name].retain_grad()
         
         return updated_params
 

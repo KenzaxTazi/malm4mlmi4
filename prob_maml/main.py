@@ -30,7 +30,7 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     num_samples_per_class = 55
 
     pretrain_iterations = 0
-    metatrain_iterations = 30000 # 70000 in paper
+    metatrain_iterations = 70000 # 70000 in paper
     stochastic = True
     num_classes = 1 # 2 for 2dclass
     bias = 0
@@ -40,7 +40,7 @@ def train(datasource='sinusoid_linear', output_directory="prob_maml/results"):
     optimizer = torch.optim.Adam(model.parameters(), lr=.01)
     meta_model = MAML_trainer(model, optimizer)
     alpha=0.001
-    num_inner_updates = 5
+    num_inner_updates = 2
 
     data_generator = DataGenerator(num_samples_per_class, meta_batch_size, datasource=datasource, num_classes=num_classes)
     num_classes = data_generator.num_classes
@@ -111,6 +111,9 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     for idx, ax in enumerate(axes.flatten()):
         test_model = copy.deepcopy(trained_meta_model)
         updated_params = test_model._inner_loop_train(inputa[idx], labela[idx], alpha)
+        updated_params = OrderedDict(test_model.regressor.named_parameters())
+        for update_idx in range(num_inner_updates):
+            updated_params = test_model._inner_loop_train(inputa[idx], labela[idx], alpha, updated_params)
 
         with torch.no_grad():
             prior_query_predictions = test_model.regressor(inputb[idx], OrderedDict(test_model.regressor.named_parameters()))
@@ -138,4 +141,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-train(datasource='sinusoid_linear', output_directory='prob_maml/results/testing/')
+train(datasource='sinusoid_linear', output_directory='prob_maml/results/modelbias2/')
