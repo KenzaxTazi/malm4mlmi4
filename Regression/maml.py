@@ -5,12 +5,14 @@ import torch.nn as nn
 from collections import OrderedDict
 from utils import *
 
+import pdb
+
 class MAML_trainer():
     def __init__(self, regressor, optimizer):
         self.regressor = regressor
         self.optimizer = optimizer
         
-    def _inner_loop_train(self, x_support, y_support, alpha):
+    def _inner_loop_train(self, x_support, y_support, alpha, init_params=None):
         '''
         Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
@@ -29,7 +31,10 @@ class MAML_trainer():
 
         # Forward pass using support sets
         with torch.enable_grad():
-            predicted = self.regressor(x_support, OrderedDict(self.regressor.named_parameters()))
+            if init_params is None:
+                init_params =  OrderedDict(self.regressor.named_parameters())
+
+            predicted = self.regressor(x_support, init_params)
             loss = F.mse_loss(predicted, y_support)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
@@ -37,17 +42,18 @@ class MAML_trainer():
             updated_params = self.regressor.state_dict()
 
             # Manual update
-            for (name, param) in self.regressor.named_parameters():
+            for (name, param) in init_params.items():
                 grad = param.grad
                 if grad is None:
                     new_param = param
                 else:
                     new_param = param - alpha * grad
                 updated_params[name] = new_param
+                updated_params[name].retain_grad()
         
-        return updated_params
+            return updated_params
 
-    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
+    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, num_inner_updates=5):
         '''
         Perform single outer loop forward and backward pass of Model-Agnostic Meta Learning Algorithm (MAML).
 
@@ -82,8 +88,16 @@ class MAML_trainer():
 
         # Perform inner loop training per task using support sets
         for task in range(x_supports.size(0)):
-            updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
-            
+            #updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha, num_grad_steps=num_inner_loops)
+
+            updated_params = OrderedDict(self.regressor.named_parameters())
+
+            for update_idx in range(num_inner_updates):
+                updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha, updated_params)
+
+            # Collect predictions for query sets, using model prior params for specific task
+            prior_predictions = self.regressor(x_queries[task], OrderedDict(self.regressor.named_parameters()))
+                        
             # Collect predictions for query sets, using model prior params for specific task
             prior_predictions = self.regressor(x_queries[task], OrderedDict(self.regressor.named_parameters()))
 

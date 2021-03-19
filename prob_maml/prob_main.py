@@ -99,7 +99,7 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     trained_var_regressor = ProbModelMLPSinusoid(bias=bias).to(device)
     trained_var_regressor.load_state_dict(torch.load(os.path.join(output_directory, f"{datasource}_model_variances.pt")))
     
-    optimizer = torch.optim.Adam(list(trained_regressor.parameters()) + list(trained_var_regressor.parameters()), lr=0.0)
+    optimizer = torch.optim.Adam(list(trained_regressor.parameters()) + list(trained_var_regressor.parameters()), lr=0.01)
     trained_meta_model = ProbMAML(trained_regressor, optimizer, trained_var_regressor)
 
     data_generator = DataGenerator(num_samples_per_class, num_test_curves, datasource=datasource, num_classes=num_classes)
@@ -137,10 +137,10 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
         ax.set_ylim([-9.0,9.0])
         ax.plot(xs, ys, '-',color='gray', linewidth=1, label='ground truth') 
         ax.plot(inputa[idx], labela[idx], '^', color='darkorchid', markeredgewidth=1, markersize=6, markeredgecolor='slategray', label='datapoints')
-        ax.plot(inputb[idx], updated_query_predictions, color='red', linestyle='--', linewidth=1, label='MAML')
+        ax.plot(inputb[idx], prior_query_predictions, color='red', linestyle='--', linewidth=1, label='MAML')
 
     plt.tight_layout()
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-train(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_4/')
+test(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_5/')
