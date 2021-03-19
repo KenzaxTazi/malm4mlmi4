@@ -3,17 +3,7 @@ import torch.nn.functional as F
 from classifiers import *
 import torch.nn as nn
 from collections import OrderedDict
-
-def del_attr(obj, names):
-    if len(names) == 1:
-        delattr(obj, names[0])
-    else:
-        del_attr(getattr(obj, names[0]), names[1:])
-def set_attr(obj, names, val):
-    if len(names) == 1:
-        setattr(obj, names[0], val)
-    else:
-        set_attr(getattr(obj, names[0]), names[1:], val)
+from tools import *
 
 class MAML_trainer():
     def __init__(self, classifier, optimizer):
@@ -54,10 +44,44 @@ class MAML_trainer():
                     new_param = param - alpha * grad # gradient descent
                 updated_params[name] = new_param
 
-        #print(updated_params['classifier.weight'])
         return updated_params
 
-    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, beta=0.01):
+    def _outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, train=True):
+
+        total_loss = torch.zeros(1)
+        accuracy = AverageMeter()
+
+        # Perform inner loop training per task using support sets
+        for task in range(x_supports.size(0)):
+            updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
+
+            # Collect logit predictions for query sets, using updated params for specific task
+            logits = self.classifier(x_queries[task], updated_params)
+
+            # Update task losses
+            curr_loss = F.cross_entropy(logits, y_queries[task])
+            total_loss = total_loss + curr_loss
+
+            # Determine accuracy
+            acc = accuracy_topk(logits, y_queries[task])
+            accuracy.update(acc.item(), logits.size(0))
+
+        # Backward pass to update meta-model parameters if in training mode
+        if train:
+            self.optimizer.zero_grad()
+            total_loss.backward()
+
+            for param in self.optimizer.param_groups[0]['params']:
+                # Bit of regularisation innit
+                nn.utils.clip_grad_value_(param, 10)
+            self.optimizer.step()
+
+        # Return training loss and accuracy
+        loss = total_loss.item()
+        acc = accuracy.avg
+        return loss, acc
+
+    def train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
         '''
         Perform single outer loop forward and backward pass of MAML algorithm
 
@@ -76,30 +100,19 @@ class MAML_trainer():
         C: Channels
         H: Image Height
         W: Image Width
+
+        alpha is inner loop learning rate
+
+        Returns meta-training loss and average accuracy over all tasks
         '''
+        self.classifier.train()
+        return(self._outer_loop_train(x_supports, y_supports, x_queries, y_queries, alpha))
 
-        total_loss = torch.zeros(1)
+    def evaluate(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01):
+        '''
+        Same as training but the meta-model parameters are not updated
 
-        # Perform inner loop training per task using support sets
-        for task in range(x_supports.size(0)):
-            updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
-
-            # Collect logit predictions for query sets, using updated params for specific task
-            logits = self.classifier(x_queries[task], updated_params)
-
-            # Update task losses
-            curr_loss = F.cross_entropy(logits, y_queries[task])
-            total_loss = total_loss + curr_loss
-
-        # Backward pass to update meta-model parameters
-        self.optimizer.zero_grad()
-        total_loss.backward()
-
-        for param in self.optimizer.param_groups[0]['params']:
-            # Bit of regularisation innit
-            nn.utils.clip_grad_value_(param, 10)
-        self.optimizer.step()
-
-        # Return training accuracy and loss
-        loss = total_loss.item()
-        # Need to use an AvergeMeter class to collect accuracies as we iterate through tasks
+        Returns meta-evaluation loss and average accuracy over tasks
+        '''
+        self.classifier.eval()
+        return(self._outer_loop_train(x_supports, y_supports, x_queries, y_queries, alpha, train=False))

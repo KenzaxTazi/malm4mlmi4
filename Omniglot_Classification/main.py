@@ -2,25 +2,47 @@
 import model as m
 import maml
 import dataprep as dp
-import torch
-import torchvision
 
+"""
+MAML Omniglot Experiment
 
-K = 1  # shots or number of updates
-N = 5  # number of classes per task
-update_lr = 0.4 
-meta_batch_size = 32
-conv = True
-
-# Import data
-xtrain, ytrain, xval, yval, xtest, ytest = dp.dataprep(K, N)
+    Convolutional 5-way, 1-shot omniglot:
+        N = 5
+        K = 1
+        lr = 0.4
+        meta_batch_size = 32
+        conv= True
+        meta_training_iterations = 60000
   
-# Create model and meta model instances
-classifier = m.Classifier(conv, K, N)
-meta_model = maml.MetaModel(classifier, meta_batch_size, update_lr, K , N)
+    Convolutional 20-way, 5-shot omniglot:
+        N = 20 
+        K = 5
+        lr = 0.1
+        meta_batch_size = 16
+        conv= True
+        meta_training_iterations = 60000         
+"""
 
-# Train and test
-meta_model.meta_learn(xtrain, ytrain, xval, yval)
+if __name__ == '__main__':
+    K = 1
+    N = 5
+    lr = 0.4
+    meta_batch_size = 32
+    conv = True
+    epochs = 150
+
+    # Import data
+    training_set, validation_set = dp.dataprep(meta_batch_size, K, N)
+    xtrain_support, ytrain_support, xtrain_query, ytrain_query = training_set
+    xval_support, yval_support, xval_query, yval_query = validation_set
+
+    # Create model and meta model instances
+    classifier = m.Classifier(conv, K, N)
+    meta_model = maml.MetaModel(classifier, lr, K, N)
+
+    # Train and evaluate
+    train_loss, train_acc  = meta_model.train(xtrain_support, ytrain_support, xtrain_query, ytrain_query, epochs=epochs)
+    val_loss, val_acc  = meta_model.evaluate(xval_support, yval_support, xval_query, yval_query)
 
 
 

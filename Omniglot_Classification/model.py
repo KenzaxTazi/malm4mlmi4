@@ -4,54 +4,58 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from torchmeta.modules import MetaModule, MetaConv2d, MetaLinear, MetaBatchNorm2d
 
-class Classifier(nn.Module):
+
+class Classifier(MetaModule):
 
     def __init__(self, conv, K, N):
 
-        super().__init__()
+        super(Classifier, self).__init__()
 
         self.conv = conv
-        self.bn = nn.BatchNorm2d(K*N)
-        self.softmax = nn.Softmax(N)
+        self.bn = MetaBatchNorm2d(64)
         
         if self.conv == True:
-            self.conv1 = nn.ConvTranspose2d(1, 64, 3) #3x3 convolutions 64 filters
-            self.conv2 = nn.ConvTranspose2d(64, 64, 3)
-            self.conv3 = nn.ConvTranspose2d(64, 64, 3)
-            self.conv4 = nn.ConvTranspose2d(64, 64, 3) 
-            self.fc1 = nn.Linear(64, 64)
+            self.conv1 = MetaConv2d(1, 64, 3, padding=1, stride=3) #3x3 convolutions 64 filters
+            self.conv2 = MetaConv2d(64, 64, 3, padding=1, stride=3)
+            self.conv3 = MetaConv2d(64, 64, 3, padding=1, stride=3)
+            self.conv4 = MetaConv2d(64, 64, 3, padding=1, stride=3)
+            self.fc1 = MetaLinear(64, N)
 
         else:
-            self.fc1 = nn.Linear(28*28, 256)
-            self.fc2 = nn.Linear(128, 64)
-            self.fc3 = nn.Linear(64, 64)
-            self.fc4 = nn.Linear(64, 64)
-            self.fc5 = nn.Linear(64, 64)
+            self.fc1 = MetaLinear(28*28, 256)
+            self.fc2 = MetaLinear(256, 128)
+            self.fc3 = MetaLinear(128, 64)
+            self.fc4 = MetaLinear(64, 64)
+            self.fc5 = MetaLinear(64, 64)
 
 
-    def forward(self, x):
+    def forward(self, x, params=None):
         '''
-        x is [K*N x C x H x W] 
-        K*N: batch size
+        x is [K * N x C x H x W] 
+        
+        K = shots, class instances 
+        N = number of classes for task
         C = Channels
         H = Height
         W = Width
         '''
 
         if self.conv == True:
-            x = F.relu(self.bn(self.conv1(x)))
-            x = F.relu(self.bn(self.conv2(x)))
-            x = F.relu(self.bn(self.conv3(x)))
-            x = F.relu(self.bn(self.conv4(x)))
-    
-            x = self.softmax(self.fc1(x))
+            x = F.relu(self.bn(self.conv1(x, params=self.get_subdict(params, 'conv1')), params=self.get_subdict(params, 'bn')))
+            x = F.relu(self.bn(self.conv2(x, params=self.get_subdict(params, 'conv2')), params=self.get_subdict(params, 'bn')))
+            x = F.relu(self.bn(self.conv3(x, params=self.get_subdict(params, 'conv3')), params=self.get_subdict(params, 'bn')))
+            x = F.relu(self.bn(self.conv4(x, params=self.get_subdict(params, 'conv4')), params=self.get_subdict(params, 'bn')))
+            x = x.view((x.size(0), -1))  # reshape tensor 
+            x = self.fc1(x, params=self.get_subdict(params, 'fc1'))
 
         else:
-            x = F.relu(self.bn(self.fc1(x)))
-            x = F.relu(self.bn(self.fc2(x)))
-            x = F.relu(self.bn(self.fc3(x)))
-            x = F.relu(self.bn(self.fc4(x)))
-            x = self.sofmax(self.fc5(x))
+            x = F.relu(self.bn(self.fc1(x, params=self.get_subdict(params, 'fc1'))))
+            x = F.relu(self.bn(self.fc2(x, params=self.get_subdict(params, 'fc2'))))
+            x = F.relu(self.bn(self.fc3(x, params=self.get_subdict(params, 'fc3'))))
+            x = F.relu(self.bn(self.fc4(x, params=self.get_subdict(params, 'fc4'))))
+            x = x.view((x.size(0), -1))  # reshape tensor 
+            x = self.fc5(x, params=self.get_subdict(params, 'fc5'))
             
         return x
