@@ -1,0 +1,4 @@
+.DS_Store
+Omniglot_Classification/data/**
+.vscode
+Omniglot_Classification/__pycache___/**
