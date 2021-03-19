@@ -25,11 +25,12 @@ MAML Omniglot Experiment
 
 if __name__ == '__main__':
     K = 1
-    N = 5
-    lr = 0.4
-    meta_batch_size = 32
+    N = 20
+    lr = 0.1
+    meta_batch_size = 16
     conv = True
     epochs = 150
+    steps = 5
 
     # Import data
     training_set, validation_set = dp.dataprep(meta_batch_size, K, N)
@@ -42,7 +43,7 @@ if __name__ == '__main__':
 
     # Train and evaluate
     train_loss, train_acc  = meta_model.train(xtrain_support, ytrain_support, xtrain_query, ytrain_query, epochs=epochs)
-    val_loss, val_acc  = meta_model.evaluate(xval_support, yval_support, xval_query, yval_query)
+    val_loss, val_acc  = meta_model.evaluate(xval_support, yval_support, xval_query, yval_query, steps)
 
 
 
