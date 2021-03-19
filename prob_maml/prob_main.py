@@ -143,4 +143,4 @@ def test(datasource='sinusoid_linear', output_directory='prob_maml/results'):
     plt.legend()
     plt.savefig(os.path.join(output_directory, f"{datasource}_test.png"), dpi=300)
 
-test(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_4/')
+test(datasource='sinusoid_linear', output_directory='prob_maml/results/prob_modelbias_5/')

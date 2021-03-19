@@ -189,13 +189,10 @@ class ProbMAML():
         '''
         with torch.enable_grad():
             # Collect predictions for train sets, using model mean prior params for specific task
-            train_prior_predictions = self.regressor(x_train, OrderedDict(self.regressor.named_parameters()))
-
-            # Calculate prior loss and add to task prior losses
-            train_prior_loss = F.mse_loss(train_prior_predictions, y_train) # L(mu_theta, D^tr)
-
+            predicted = self.regressor(x_train, OrderedDict(self.regressor.named_parameters()))
+            loss = F.mse_loss(predicted, y_train) # L(mu_theta, D^tr)
             self.optimizer.zero_grad()
-            train_prior_loss.backward(retain_graph=True)
+            loss.backward(retain_graph=True)
 
             sample_params = {}
             for name, param in self.regressor.named_parameters():
@@ -224,3 +221,42 @@ class ProbMAML():
         
         return updated_params
     
+    def _inner_loop_test_og(self, x_support, y_support, alpha, init_params=None):
+        '''
+        Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
+
+        x_support : tensor [K, 1]
+            Support set inputs, where K is the number of sampled input-output pairs from task.  
+
+        y_support : tensor [K, 1]
+            Support set outputs, where K is the number of sampled input-output pairs from task. 
+        
+        alpha : float
+            Inner loop learning rate
+
+
+        Return updated model parameters. 
+        '''
+
+        # Forward pass using support sets
+        with torch.enable_grad():
+            if init_params is None:
+                init_params =  OrderedDict(self.regressor.named_parameters())
+            predicted = self.regressor(x_support, init_params)
+        
+            loss = F.mse_loss(predicted, y_support)
+            self.optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+
+            updated_params = self.regressor.state_dict()
+
+            # Manual update
+            for (name, param) in init_params.items():
+                grad = param.grad
+                if grad is None:
+                    new_param = param
+                else:
+                    new_param = param - alpha * grad
+                updated_params[name] = new_param
+        
+        return updated_params
