@@ -121,7 +121,7 @@ class MetaModel():
         print('Final loss :', loss, 'Final acc :', acc)
         return loss, acc
 
-    def evaluate(self, x_supports, y_supports, x_queries, y_queries):
+    def evaluate(self, x_supports, y_supports, x_queries, y_queries, steps):
         '''
         Perform single outer loop forward
 
@@ -147,7 +147,7 @@ class MetaModel():
 
         for task in range(x_supports.size(1)):
             # Perform inner loop training per task using support set
-            updated_params = self.inner_loop_train(x_supports[task], y_supports[task], steps=3)
+            updated_params = self.inner_loop_train(x_supports[task], y_supports[task], steps=steps)
 
             # Collect logit predictions for query sets, using updated params for specific task
             logits = self.classifier(x_queries[task], updated_params)
