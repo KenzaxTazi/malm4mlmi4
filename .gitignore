@@ -1,4 +1,5 @@
 .DS_Store
-Omniglot_Classification/data/**
+**Omniglot_Classification/data/
 .vscode
-Omniglot_Classification/__pycache___/**
+**Omniglot_Classification/__pycache__
+**Regression/__pycache__
