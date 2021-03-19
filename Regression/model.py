@@ -3,8 +3,6 @@ import torch.nn as nn
 from collections import OrderedDict
 from torchmeta.modules import (MetaModule, MetaLinear, MetaSequential)
 
-Sinusoid
-
 __all__ = ['MetaMLPModel','ModelMLPSinusoid']
 
 class MetaMLPModel(MetaModule):

@@ -67,19 +67,23 @@ class DataGenerator(metaclass=abc.ABCMeta):
                  x_range = (-5, 5),
                  A_range = (0.1, 5),
                  P_range = (0, np.pi),
-                 min_train_points=10,
-                 max_train_points=10,
-                 min_test_poitns=10,
-                 max_test_points=10):
+                 min_support_points=10,
+                 max_support_points=10,
+                 min_query_points=10,
+                 max_query_points=10,
+                 permute_inds=True,
+                 ):
+
         self.batch_size = batch_size
         self.num_tasks = num_tasks
         self.x_range = x_range
         self.A_range = A_range
         self.P_range = P_range
-        self.max_train_points = max_train_points
-        self.max_test_points = max_test_points
-        self.min_train_points = min_train_points
-        self.min_test_poitns = min_test_poitns
+        self.max_support_points = max_support_points
+        self.max_query_points = max_query_points
+        self.min_support_points = min_support_points
+        self.min_query_points = min_query_points
+        self.permute_inds = permute_inds
 
     @abc.abstractmethod
     def sample(self, x):
@@ -96,44 +100,57 @@ class DataGenerator(metaclass=abc.ABCMeta):
         """Generate a task.
 
         Returns:
-            dict: A task, which is a dictionary with keys 'x', 'y', 'x_context',
-                'y_context', 'x_target', and 'y_target'.
+            dict: A task, which is a dictionary with keys 'x', 'y', 'x_support',
+                'y_support', 'x_query', and 'y_query'.
         """
         task = {'x': [],
                 'y': [],
-                'x_context': [],
-                'y_context': [],
-                'x_target': [],
-                'y_target': []}
+                'x_support': [],
+                'y_support': [],
+                'x_query': [],
+                'y_query': [],
+                'amplitudes': [],
+                'phases': []
+                }
         
-        #Determine number of test and train points
-        num_train_points = np.random.randint(self.min_train_points, self.max_train_points + 1)
-        num_test_points = np.random.randint(self.min_test_poitns, self.max_test_points + 1)
+        #Determine number of context (train) and query (test) points
+        num_train_points = np.random.randint(self.min_support_points, self.max_support_points + 1)
+        num_test_points = np.random.randint(self.min_query_points, self.max_query_points + 1)
         num_points = num_train_points + num_test_points
         
         for i in range(self.batch_size):
             # Sample inputs and outputs.
-            x = _rand(self.x_range, num_points)
-            y = self.sample(x)
+            x = np.sort(_rand(self.x_range, num_points))
+            A = _rand(self.A_range, 1)
+            phase = _rand(self.P_range, 1)
+            y = np.squeeze(np.sin(x + phase) * A)
+            #y = self.sample(x)
 
             # Determine indices for train and test set.
-            inds = np.random.permutation(x.shape[0])
+            
+            if self.permute_inds:
+                inds = np.random.permutation(x.shape[0])
+            else:
+                x = np.sort(x)
+                inds = np.arange(x.shape[0])
+
             inds_train = sorted(inds[:num_train_points])
             inds_test = sorted(inds[num_train_points:num_points])
 
             # Record to task.
             task['x'].append(sorted(x))
             task['y'].append(y[np.argsort(x)])
-            task['x_context'].append(x[inds_train])
-            task['y_context'].append(y[inds_train])
-            task['x_target'].append(x[inds_test])
-            task['y_target'].append(y[inds_test])
+            task['x_support'].append(x[inds_train])
+            task['y_support'].append(y[inds_train])
+            task['x_query'].append(x[inds_test])
+            task['y_query'].append(y[inds_test])
+            task['amplitudes'].append(A)
+            task['phases'].append(phase)
 
         # Stack batch and convert to PyTorch.
         task = {k: torch.tensor(_uprank(np.stack(v, axis=0)),
                                 dtype=torch.float32).to(device)
                 for k, v in task.items()}
-
         return task
 
     def __iter__(self):
@@ -154,6 +171,12 @@ class SinusoidGenerator(DataGenerator):
         DataGenerator.__init__(self,**kw_args)
 
     def sample(self, x):
-        self.A = _rand(self.A_range, 1)
-        self.phase = _rand(self.P_range, 1)
-        return np.squeeze (np.sin(x + self.phase) * self.A)
+        A = _rand(self.A_range, 1)
+        phase = _rand(self.P_range, 1)
+        return np.squeeze (np.sin(x + phase) * A)
+
+
+if __name__ == '__main__':
+    print("Executed")
+    SinusoidGenerator(permute_inds = False).generate_task()
+    print("Executed")
