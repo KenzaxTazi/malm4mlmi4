@@ -25,12 +25,12 @@ MAML Omniglot Experiment
 
 if __name__ == '__main__':
     K = 1
-    N = 20
-    lr = 0.1
-    meta_batch_size = 16
+    N = 5
+    lr = 0.4
+    meta_batch_size = 32
     conv = True
     epochs = 150
-    steps = 5
+    steps = 3
 
     # Import data
     training_set, validation_set = dp.dataprep(meta_batch_size, K, N)
