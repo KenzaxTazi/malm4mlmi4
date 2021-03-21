@@ -53,7 +53,7 @@ class MAML_trainer():
         
             return updated_params
 
-    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, num_inner_updates=5):
+    def outer_loop_train(self, x_supports, y_supports, x_queries, y_queries, alpha=0.01, num_inner_updates=5, train=True):
         '''
         Perform single outer loop forward and backward pass of Model-Agnostic Meta Learning Algorithm (MAML).
 
@@ -112,14 +112,15 @@ class MAML_trainer():
             curr_loss = F.mse_loss(predictions, y_queries[task])
             total_loss = total_loss + curr_loss
 
-        # Backward pass to update meta-model parameters
-        self.optimizer.zero_grad()
-        total_loss.backward()
+        if train:
+            # Backward pass to update meta-model parameters
+            self.optimizer.zero_grad()
+            total_loss.backward()
 
-        for param in self.optimizer.param_groups[0]['params']:
-            # Bit of regularisation innit
-            nn.utils.clip_grad_value_(param, 10)
-        self.optimizer.step()
+            for param in self.optimizer.param_groups[0]['params']:
+                # Bit of regularisation innit
+                nn.utils.clip_grad_value_(param, 10)
+            self.optimizer.step()
 
         # Return training loss
         return total_loss, total_prior_loss

@@ -25,6 +25,6 @@ class RunningAverage:
             val (float): Value to update with.
             n (int): Number elements used to compute `val`.
         """
-        self.sum += val * n
+        self.sum += val #* n
         self.cnt += n
         self.avg = self.sum / self.cnt
