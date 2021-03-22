@@ -16,7 +16,7 @@ class MetaModel():
         self.update_lr = update_lr
         self.optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001, betas=[0.9, 0.99])
     
-    def inner_loop_train(self, x_support, y_support, steps):
+    def inner_loop_train(self, x_support, y_support):
         '''
         x_support = [K*N x C x H x W]
         y_support = [K*N]
@@ -50,7 +50,7 @@ class MetaModel():
                 new_param = param
             else:
                 #print('why is this not changing? ', steps * self.update_lr * grad )
-                new_param = param - steps * self.update_lr * grad  # gradient descent
+                new_param = param - self.update_lr * grad  # gradient descent
             
             updated_params[name] = new_param
 
@@ -87,7 +87,7 @@ class MetaModel():
 
                 for task in range(x_supports.size(1)):
                     # Perform inner loop training per task using support set
-                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
+                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task])
 
                     # Collect logit predictions for query sets, using updated params for specific task
                     logits = self.classifier(x_queries[batch, task], updated_params)
@@ -147,7 +147,8 @@ class MetaModel():
 
         for task in range(x_supports.size(1)):
             # Perform inner loop training per task using support set
-            updated_params = self.inner_loop_train(x_supports[task], y_supports[task], steps=steps)
+            for s in range(steps):
+                updated_params = self.inner_loop_train(x_supports[task], y_supports[task])
 
             # Collect logit predictions for query sets, using updated params for specific task
             logits = self.classifier(x_queries[task], updated_params)
