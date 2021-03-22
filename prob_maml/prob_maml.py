@@ -17,7 +17,7 @@ class ProbMAML():
         self.regressor_variances = regressor_variances
         self.optimizer = optimizer
         
-    def _inner_loop_train(self, x_train, y_train, x_test, y_test, alpha=0.001, init_params=None, gamma_q=0.001, gamma_p=0.001, noise_q=0.01):
+    def _inner_loop_train(self, x_train, y_train, x_test, y_test, alpha=0.001, init_params=None, gamma_q=0.001, gamma_p=0.001, noise_q=0.001):
         '''
         Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
@@ -86,10 +86,11 @@ class ProbMAML():
             p_all_vars = []
             q_all_means = []
             q_all_vars = []
+            variance_params = OrderedDict(self.regressor_variances.named_parameters())
 
             for name, param in self.regressor.named_parameters():
                 p_mean = param - (gamma_p * param.grad)
-                p_log_var = self.regressor_variances.state_dict()[name]
+                p_log_var = variance_params[name]
                 p_var = torch.exp(p_log_var)
 
                 p_all_means.append(p_mean.flatten())
@@ -166,6 +167,7 @@ class ProbMAML():
         for param in self.optimizer.param_groups[0]['params']:
             # Bit of regularisation innit
             nn.utils.clip_grad_value_(param, 10)
+        
         self.optimizer.step()
 
         # Return training loss
@@ -191,22 +193,23 @@ class ProbMAML():
             # Collect predictions for train sets, using model mean prior params for specific task
             predicted = self.regressor(x_train, OrderedDict(self.regressor.named_parameters()))
             loss = F.mse_loss(predicted, y_train) # L(mu_theta, D^tr)
-            self.optimizer.zero_grad()
+            # self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
+            variance_params = OrderedDict(self.regressor_variances.named_parameters())
             sample_params = {}
             for name, param in self.regressor.named_parameters():
                 dist_mean = param - (gamma_p * param.grad)
-                dist_log_var = self.regressor_variances.state_dict()[name]
+                dist_log_var = variance_params[name]
                 dist_var = torch.exp(dist_log_var)
                 dist_std = torch.sqrt(dist_var)
+                # dist_std = 0.02*torch.ones(dist_std.shape)
                 sample_params[name] = Normal(dist_mean, dist_std).rsample()
                 sample_params[name].retain_grad()
 
             sample_predicted = self.regressor(x_train, OrderedDict(sample_params))
             sample_loss = F.mse_loss(sample_predicted, y_train)
-
-            self.optimizer.zero_grad()
+            # self.optimizer.zero_grad()
             sample_loss.backward(retain_graph=True)
 
             updated_params = {}
@@ -214,11 +217,12 @@ class ProbMAML():
             for name, param in sample_params.items():
                 grad = param.grad
                 if grad is None:
+                    print('non')
                     new_param = param
                 else:
                     new_param = param - alpha * grad
                 updated_params[name] = new_param
-        
+
         return updated_params
     
     def _inner_loop_test_og(self, x_support, y_support, alpha, init_params=None):
@@ -245,7 +249,6 @@ class ProbMAML():
             predicted = self.regressor(x_support, init_params)
         
             loss = F.mse_loss(predicted, y_support)
-            self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
 
             updated_params = self.regressor.state_dict()
