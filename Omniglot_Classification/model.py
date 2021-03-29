@@ -17,10 +17,10 @@ class Classifier(MetaModule):
         self.bn = MetaBatchNorm2d(64)
         
         if self.conv == True:
-            self.conv1 = MetaConv2d(1, 64, 3, padding=1, stride=2) #3x3 convolutions 64 filters
-            self.conv2 = MetaConv2d(64, 64, 3, padding=1, stride=2)
-            self.conv3 = MetaConv2d(64, 64, 3, padding=1, stride=2)
-            self.conv4 = MetaConv2d(64, 64, 3, padding=1, stride=2)
+            self.conv1 = MetaConv2d(1, 64, 3, padding=0, stride=2) #3x3 convolutions 64 filters
+            self.conv2 = MetaConv2d(64, 64, 3, padding=0, stride=2)
+            self.conv3 = MetaConv2d(64, 64, 3, padding=0, stride=2)
+            self.conv4 = MetaConv2d(64, 64, 3, padding=0, stride=2)
             self.fc1 = MetaLinear(64, N)
 
         else:
