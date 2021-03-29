@@ -186,8 +186,8 @@ def dataprep(batch_size, K, N):
 
     training_set = load_data(batch_size, K, N, training_char)
     validation_set = load_data(None, K, N, validation_char)
-    #test_set = load_data(batch_size, K, N, test_char)
+    test_set = load_data(None, K, N, test_char)
 
-    return training_set, validation_set
+    return training_set, validation_set, test_set
 
 
