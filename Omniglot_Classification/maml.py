@@ -150,13 +150,13 @@ class MetaModel():
             for s in range(steps):
                 updated_params = self.inner_loop_train(x_supports[task], y_supports[task])
 
-            # Collect logit predictions for query sets, using updated params for specific task
-            logits = self.classifier(x_queries[task], updated_params)
-        
-            # Calculate query task losses
-            y_queries_indices = torch.argmax(y_queries[task], dim=1)
-            curr_loss = F.cross_entropy(logits, y_queries_indices)
-            total_loss = total_loss + curr_loss
+                # Collect logit predictions for query sets, using updated params for specific task
+                logits = self.classifier(x_queries[task], updated_params)
+            
+                # Calculate query task losses
+                y_queries_indices = torch.argmax(y_queries[task], dim=1)
+                curr_loss = F.cross_entropy(logits, y_queries_indices)
+                total_loss = total_loss + curr_loss
             
             # Determine accuracy
             acc = accuracy_topk(logits, y_queries_indices)
