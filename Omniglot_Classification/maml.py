@@ -53,6 +53,7 @@ class MetaModel():
                 new_param = param - self.update_lr * grad  # gradient descent
             
             updated_params[name] = new_param
+            updates_params[name].retain_grad()
 
         return updated_params
 
