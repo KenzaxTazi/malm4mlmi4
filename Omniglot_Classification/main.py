@@ -27,9 +27,9 @@ if __name__ == '__main__':
     K = 1
     N = 5
     lr = 0.4
-    meta_batch_size = 32
+    meta_batch_size = 8
     conv = True
-    epochs = 300
+    epochs = 100
 
     steps = 3
 
