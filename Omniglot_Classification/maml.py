@@ -16,7 +16,7 @@ class MetaModel():
         self.update_lr = update_lr
         self.optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001, betas=[0.9, 0.99])
     
-    def inner_loop_train(self, x_support, y_support, init_parmams=None):
+    def inner_loop_train(self, x_support, y_support, init_params=None):
         '''
         x_support = [K*N x C x H x W]
         y_support = [K*N]
@@ -34,8 +34,8 @@ class MetaModel():
         with torch.enable_grad():
             with torch.autograd.set_detect_anomaly(True):
 
-                if init_parmams is None:
-                    init_parmams =  OrderedDict(self.classifier.named_parameters())
+                if init_params is None:
+                    init_params =  OrderedDict(self.classifier.named_parameters())
 
                 logits = self.classifier(x_support,init_params)
                 y_support_indices = torch.argmax(y_support, dim=1)
@@ -83,7 +83,7 @@ class MetaModel():
         W: Image Width
         '''
         updated_params = None
-        
+
         for e in range(epochs):
             print('epoch:', e)
 
