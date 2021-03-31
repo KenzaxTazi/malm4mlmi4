@@ -82,7 +82,6 @@ class MetaModel():
         H: Image Height
         W: Image Width
         '''
-        updated_params = None
 
         for e in range(epochs):
             print('epoch:', e)
@@ -93,7 +92,7 @@ class MetaModel():
 
                 for task in range(x_supports.size(1)):
                     # Perform inner loop training per task using support set
-                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], updated_params)
+                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task])
 
                     # Collect logit predictions for query sets, using updated params for specific task
                     logits = self.classifier(x_queries[batch, task], updated_params)
@@ -150,15 +149,16 @@ class MetaModel():
 
         total_loss = torch.zeros(1)
         accuracy = AverageMeter()
+        init_params = None
 
         for task in range(x_supports.size(1)):
             # Perform inner loop training per task using support set
             for s in range(steps):
-                updated_params = self.inner_loop_train(x_supports[task], y_supports[task])
+                updated_params = self.inner_loop_train(x_supports[task], y_supports[task], init_params)
 
                 # Collect logit predictions for query sets, using updated params for specific task
                 logits = self.classifier(x_queries[task], updated_params)
-            
+                init_params = updated_params
                 # Calculate query task losses
                 y_queries_indices = torch.argmax(y_queries[task], dim=1)
                 curr_loss = F.cross_entropy(logits, y_queries_indices)
