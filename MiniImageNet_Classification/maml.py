@@ -43,7 +43,6 @@ class MAML_trainer():
                 else:
                     new_param = param - alpha * grad # gradient descent
                 updated_params[name] = new_param
-                updates_params[name].retain_grad()
 
         return updated_params
 
