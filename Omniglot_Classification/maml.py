@@ -82,7 +82,8 @@ class MetaModel():
         H: Image Height
         W: Image Width
         '''
-  
+        updated_params = None
+        
         for e in range(epochs):
             print('epoch:', e)
 
