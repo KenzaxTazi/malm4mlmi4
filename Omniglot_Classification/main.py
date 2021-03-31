@@ -29,7 +29,7 @@ if __name__ == '__main__':
     lr = 0.4
     meta_batch_size = 32
     conv = True
-    epochs = 10
+    epochs = 100
     steps = 3
 
     # Import data
