@@ -13,7 +13,7 @@ class MAML_trainer():
         self.regressor = regressor
         self.optimizer = optimizer
         
-    def _inner_loop_train(self, x_support, y_support, alpha, init_params=None):
+    def _inner_loop_train(self, x_support, y_support, alpha):
         '''
         Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
 
@@ -32,9 +32,7 @@ class MAML_trainer():
 
         # Forward pass using support sets
         with torch.enable_grad():
-            if init_params is None:
-                init_params =  OrderedDict(self.regressor.named_parameters())
-            predicted = self.regressor(x_support, init_params)
+            predicted = self.regressor(x_support, OrderedDict(self.regressor.named_parameters()))
             loss = F.mse_loss(predicted, y_support)
             self.optimizer.zero_grad()
             loss.backward(retain_graph=True)
@@ -42,14 +40,13 @@ class MAML_trainer():
             updated_params = self.regressor.state_dict()
 
             # Manual update
-            for (name, param) in init_params.items():
+            for (name, param) in self.regressor.named_parameters():
                 grad = param.grad
                 if grad is None:
                     new_param = param
                 else:
                     new_param = param - alpha * grad
                 updated_params[name] = new_param
-                updated_params[name].retain_grad()
         
         return updated_params
 
@@ -88,9 +85,11 @@ class MAML_trainer():
 
         # Perform inner loop training per task using support sets
         for task in range(x_supports.size(0)):
-            updated_params = OrderedDict(self.regressor.named_parameters())
-            for update_idx in range(num_inner_updates):
-                updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha, updated_params)
+            # updated_params = OrderedDict(self.regressor.named_parameters())
+            # for update_idx in range(num_inner_updates):
+            #     updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha, updated_params)
+            updated_params = self._inner_loop_train(x_supports[task], y_supports[task], alpha)
+
             # Collect predictions for query sets, using model prior params for specific task
             prior_predictions = self.regressor(x_queries[task], OrderedDict(self.regressor.named_parameters()))
 
@@ -116,3 +115,43 @@ class MAML_trainer():
 
         # Return training loss
         return total_loss, total_prior_loss
+
+    def _inner_loop_test(self, x_support, y_support, alpha, init_params=None):
+        '''
+        Perform a single inner loop forward pass and backward pass (manual parameter update) of Model-Agnostic Meta Learning (MAML).  
+
+        x_support : tensor [K, 1]
+            Support set inputs, where K is the number of sampled input-output pairs from task.  
+
+        y_support : tensor [K, 1]
+            Support set outputs, where K is the number of sampled input-output pairs from task. 
+        
+        alpha : float
+            Inner loop learning rate
+
+
+        Return updated model parameters. 
+        '''
+
+        # Forward pass using support sets
+        with torch.enable_grad():
+            if init_params is None:
+                init_params =  OrderedDict(self.regressor.named_parameters())
+            predicted = self.regressor(x_support, init_params)
+            loss = F.mse_loss(predicted, y_support)
+            self.optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+
+            updated_params = self.regressor.state_dict()
+
+            # Manual update
+            for (name, param) in init_params.items():
+                grad = param.grad
+                if grad is None:
+                    new_param = param
+                else:
+                    new_param = param - alpha * grad
+                updated_params[name] = new_param
+                updated_params[name].retain_grad()
+        
+        return updated_params

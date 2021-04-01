@@ -36,7 +36,7 @@ def train_test_splitting():
     np.random.shuffle(char_list)
     training_char = char_list[0:1200]  # [0:1200]   
     validation_char = char_list [1200:1250]  # [1200:1250]
-    test_char = char_list[1250:-1]  # [1250:-1]
+    test_char = char_list[1250:1620]  # [1250:-1]
 
     return  training_char, validation_char, test_char
 
@@ -186,8 +186,8 @@ def dataprep(batch_size, K, N):
 
     training_set = load_data(batch_size, K, N, training_char)
     validation_set = load_data(None, K, N, validation_char)
-    #test_set = load_data(batch_size, K, N, test_char)
+    test_set = load_data(None, K, N, test_char)
 
-    return training_set, validation_set
+    return training_set, validation_set, test_set
 
 

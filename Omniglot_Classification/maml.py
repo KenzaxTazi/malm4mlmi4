@@ -16,7 +16,7 @@ class MetaModel():
         self.update_lr = update_lr
         self.optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001, betas=[0.9, 0.99])
     
-    def inner_loop_train(self, x_support, y_support, steps):
+    def inner_loop_train(self, x_support, y_support, init_params=None):
         '''
         x_support = [K*N x C x H x W]
         y_support = [K*N]
@@ -33,7 +33,11 @@ class MetaModel():
         # Forward pass using support sets
         with torch.enable_grad():
             with torch.autograd.set_detect_anomaly(True):
-                logits = self.classifier(x_support, OrderedDict(self.classifier.named_parameters()))
+
+                if init_params is None:
+                    init_params =  OrderedDict(self.classifier.named_parameters())
+
+                logits = self.classifier(x_support,init_params)
                 y_support_indices = torch.argmax(y_support, dim=1)
                 loss = F.cross_entropy(logits, y_support_indices)
                 self.classifier.zero_grad()
@@ -50,9 +54,10 @@ class MetaModel():
                 new_param = param
             else:
                 #print('why is this not changing? ', steps * self.update_lr * grad )
-                new_param = param - steps * self.update_lr * grad  # gradient descent
+                new_param = param - self.update_lr * grad  # gradient descent
             
             updated_params[name] = new_param
+            updated_params[name].retain_grad()
 
         return updated_params
 
@@ -77,7 +82,7 @@ class MetaModel():
         H: Image Height
         W: Image Width
         '''
-  
+
         for e in range(epochs):
             print('epoch:', e)
 
@@ -87,7 +92,7 @@ class MetaModel():
 
                 for task in range(x_supports.size(1)):
                     # Perform inner loop training per task using support set
-                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task], steps=1)
+                    updated_params = self.inner_loop_train(x_supports[batch, task], y_supports[batch, task])
 
                     # Collect logit predictions for query sets, using updated params for specific task
                     logits = self.classifier(x_queries[batch, task], updated_params)
@@ -144,18 +149,20 @@ class MetaModel():
 
         total_loss = torch.zeros(1)
         accuracy = AverageMeter()
+        init_params = None
 
         for task in range(x_supports.size(1)):
             # Perform inner loop training per task using support set
-            updated_params = self.inner_loop_train(x_supports[task], y_supports[task], steps=steps)
+            for s in range(steps):
+                updated_params = self.inner_loop_train(x_supports[task], y_supports[task], init_params)
 
-            # Collect logit predictions for query sets, using updated params for specific task
-            logits = self.classifier(x_queries[task], updated_params)
-        
-            # Calculate query task losses
-            y_queries_indices = torch.argmax(y_queries[task], dim=1)
-            curr_loss = F.cross_entropy(logits, y_queries_indices)
-            total_loss = total_loss + curr_loss
+                # Collect logit predictions for query sets, using updated params for specific task
+                logits = self.classifier(x_queries[task], updated_params)
+                init_params = updated_params
+                # Calculate query task losses
+                y_queries_indices = torch.argmax(y_queries[task], dim=1)
+                curr_loss = F.cross_entropy(logits, y_queries_indices)
+                total_loss = total_loss + curr_loss
             
             # Determine accuracy
             acc = accuracy_topk(logits, y_queries_indices)
